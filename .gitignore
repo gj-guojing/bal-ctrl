@@ -1,0 +1,14 @@
+# dir
+.vs/
+cppzmq/
+lib/
+out/
+SimulinkCoSimulation/
+
+.vscode/
+build/
+
+# file
+.editorconfig
+.gitattributes
+CMakeSettings.json
