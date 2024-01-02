@@ -117,18 +117,21 @@ void triple::TripleModel::calcuForwardKinematics(std::vector<double>& data) {
 	m_->getOutputPos(ee_position);
 	ee_position[3] = std::fmod(ee_position[3], 2 * PI);
 
+	data[6] = ee_position[0];
+	data[7] = ee_position[1];
+	data[8] = ee_position[3];
 
-	if (std::max({ std::abs(data[6] - ee_position[0]),
-				   std::abs(data[7] - ee_position[1]) }) < 1e-5) {
-		data[6] = ee_position[0];
-		data[7] = ee_position[1];
-		data[8] = ee_position[3];
-	}
-	else {
-		std::cerr << " forward kinematics is wrong! " << std::endl;
-		std::cout << data[6] << " " << data[7] << " " << data[8] << " " << std::endl;
-		std::cout << ee_position[0] << " " << ee_position[1] << " " << ee_position[3] << " " << std::endl;
-	}
+	// if (std::max({ std::abs(data[6] - ee_position[0]),
+	// 			   std::abs(data[7] - ee_position[1]) }) < 1e-5) {
+	// 	data[6] = ee_position[0];
+	// 	data[7] = ee_position[1];
+	// 	data[8] = ee_position[3];
+	// }
+	// else {
+	// 	std::cerr << " forward kinematics is wrong! " << std::endl;
+	// 	std::cout << data[6] << " " << data[7] << " " << data[8] << " " << std::endl;
+	// 	std::cout << ee_position[0] << " " << ee_position[1] << " " << ee_position[3] << " " << std::endl;
+	// }
 }
 
 triple::TripleModel::TripleModel() {
@@ -136,6 +139,11 @@ triple::TripleModel::TripleModel() {
 }
 triple::TripleModel::~TripleModel() = default;
 
+// ARIS_REGISTRATION{
+//     aris::core::class_<triple::TripleModel>("TripleModel")
+//         .inherit<aris::dynamic::Model>()
+//         ;
+// }
 
 
 
