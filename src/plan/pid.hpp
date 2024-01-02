@@ -9,7 +9,7 @@
 	calculate PID 
 
 */
-class BAL_CTRL_API PIDController {
+class PIDController {
 public:
 	void setTarget(double targetValue);
 	double calculateP(double value);

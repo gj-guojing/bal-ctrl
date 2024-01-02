@@ -3,74 +3,74 @@
 
 namespace triple {
 	
-	// ¼ÆËãÄ©¶Ë¼ÓËÙ¶ÈËùÐèÒªµÄ±äÁ¿£»
-	struct fixedPlan::stateImp {
-		double targetPos;
-		double trajectoryVel;
-		double trajectoryAcc;
-		double statePos;
-		double stateVel;
-		double desiredVel;
-		double desiredAcc;
-		double weightKp;
-		double weightKv;
-		double maxVel;
-		double maxAcc;
-		int count = 0;
+	// // è®¡ç®—æœ«ç«¯åŠ é€Ÿåº¦æ‰€éœ€è¦çš„å˜é‡ï¼›
+	// struct fixedPlan::stateImp {
+	// 	double targetPos;
+	// 	double trajectoryVel;
+	// 	double trajectoryAcc;
+	// 	double statePos;
+	// 	double stateVel;
+	// 	double desiredVel;
+	// 	double desiredAcc;
+	// 	double weightKp;
+	// 	double weightKv;
+	// 	double maxVel;
+	// 	double maxAcc;
+	// 	int count = 0;
 
-		// initialize the struct parameters target, weightkp, weightKv and maxVel, maxAcc use default values
-		stateImp(double target, double kp, double kv) : targetPos{ target }, weightKp{ kp }, weightKv{ kv } {
-			this->maxVel = 2;
-			this->maxAcc = 5;
-			this->trajectoryVel = 0;
-			this->trajectoryAcc = 0;
+	// 	// initialize the struct parameters target, weightkp, weightKv and maxVel, maxAcc use default values
+	// 	stateImp(double target, double kp, double kv) : targetPos{ target }, weightKp{ kp }, weightKv{ kv } {
+	// 		this->maxVel = 2;
+	// 		this->maxAcc = 5;
+	// 		this->trajectoryVel = 0;
+	// 		this->trajectoryAcc = 0;
 
-			if (target == 0) {
-				this->targetPos = 0.000000001;
-			}
-		};
+	// 		if (target == 0) {
+	// 			this->targetPos = 0.000000001;
+	// 		}
+	// 	};
 		
-		// initialize the struct parameters target, weightkp, weightKv, maxVel, maxAcc
-		stateImp(double target, double kp, double kv, double maxv, double maxa) :
-			targetPos{ target }, weightKp{ kp }, weightKv{ kv }, maxVel{ maxv }, maxAcc{ maxa } {
-			this->trajectoryVel = 0;
-			this->trajectoryAcc = 0;
-			if (target == 0) {
-				this->targetPos = 0.000000001;
-			}
-		};
+	// 	// initialize the struct parameters target, weightkp, weightKv, maxVel, maxAcc
+	// 	stateImp(double target, double kp, double kv, double maxv, double maxa) :
+	// 		targetPos{ target }, weightKp{ kp }, weightKv{ kv }, maxVel{ maxv }, maxAcc{ maxa } {
+	// 		this->trajectoryVel = 0;
+	// 		this->trajectoryAcc = 0;
+	// 		if (target == 0) {
+	// 			this->targetPos = 0.000000001;
+	// 		}
+	// 	};
 
-		void getStatedata(double pos, double vel) {
-			this->statePos = pos;
-			this->stateVel = vel;
-		}
+	// 	void getStatedata(double pos, double vel) {
+	// 		this->statePos = pos;
+	// 		this->stateVel = vel;
+	// 	}
 
-		void calcuDesiredVel() {
-			if (trajectoryVel > 0) {
-				desiredVel = weightKp * (targetPos - statePos) + 2.0 * trajectoryVel;
-			}
-			else {
-				desiredVel = weightKp * (targetPos - statePos) + 2.0 * trajectoryVel;
-			}
-			desiredVel = std::max(desiredVel, -maxVel);
-			this->desiredVel = std::min(desiredVel, maxVel);
-		}
+	// 	void calcuDesiredVel() {
+	// 		if (trajectoryVel > 0) {
+	// 			desiredVel = weightKp * (targetPos - statePos) + 2.0 * trajectoryVel;
+	// 		}
+	// 		else {
+	// 			desiredVel = weightKp * (targetPos - statePos) + 2.0 * trajectoryVel;
+	// 		}
+	// 		desiredVel = std::max(desiredVel, -maxVel);
+	// 		this->desiredVel = std::min(desiredVel, maxVel);
+	// 	}
 
-		void calcuDesiredAcc() {
-			this->calcuDesiredVel();
+	// 	void calcuDesiredAcc() {
+	// 		this->calcuDesiredVel();
 			
-			if (trajectoryAcc > 0) {
-				desiredAcc = weightKv * (desiredVel - stateVel) + 2.0 * trajectoryAcc;
-			}
-			else {
-				desiredAcc = weightKv * (desiredVel - stateVel) + 2.0 * trajectoryAcc;
-			}
+	// 		if (trajectoryAcc > 0) {
+	// 			desiredAcc = weightKv * (desiredVel - stateVel) + 2.0 * trajectoryAcc;
+	// 		}
+	// 		else {
+	// 			desiredAcc = weightKv * (desiredVel - stateVel) + 2.0 * trajectoryAcc;
+	// 		}
 
-			desiredAcc = std::max(desiredAcc, -maxAcc);
-			this->desiredAcc = std::min(desiredAcc, maxAcc);
-		}
+	// 		desiredAcc = std::max(desiredAcc, -maxAcc);
+	// 		this->desiredAcc = std::min(desiredAcc, maxAcc);
+	// 	}
 
-	};
+	// };
 
 	// inputdata: joint1, joint2, joint3, w1, w2, w3, x, y, angle, vx, vy, wz, ax, ay, bz, ja1, ja2, ja3
 	// stateval:  joint1, joint2, joint3, w1, w2, w3, ax, ay ;
@@ -140,7 +140,7 @@ namespace triple {
 		//	stateVar_[0].weightKv = 20;
 		//}
 		
-		//// ÊµÑé´úÂë£¬¶àÈ¥¼¸¸öµã£¬È»ºóÔÙµ½Æ½ºâµã
+		//// Êµï¿½ï¿½ï¿½ï¿½ë£¬ï¿½ï¿½È¥ï¿½ï¿½ï¿½ï¿½ï¿½ã£¬È»ï¿½ï¿½ï¿½Ùµï¿½Æ½ï¿½ï¿½ï¿½
 		//if (count <= 4000) {
 		//	stateVar_[0].targetPos = 0.3;
 		//	stateVar_[1].targetPos = 0.7;
@@ -180,7 +180,7 @@ namespace triple {
 	{ 
 		return this->calcuStateVal();
 	}
-	// ÉèÖÃÄ¿±êÎ»ÖÃºÍÈ¨ÖØ£»
+	// ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½Î»ï¿½Ãºï¿½È¨ï¿½Ø£ï¿½
 	fixedPlan::fixedPlan(std::vector<double> targetdata, std::vector<double> weightdata) {
 		
 		// Determine whether the number of weights is twice the number of target values

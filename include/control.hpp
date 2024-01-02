@@ -9,7 +9,7 @@
 //#include <Eigen/Core>
 //#include <Eigen/SVD>
 
-#include "control.hpp"
+// ##include "control.hpp"
 //#include "math.hpp"
 #include "model.hpp"
 #include "export.h"

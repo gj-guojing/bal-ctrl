@@ -1,7 +1,7 @@
 #ifndef ZMQMSG_H
 #define ZMQMSG_H
 
-// 用于使用zmq发送和接收数据
+// 鐢ㄤ簬浣跨敤zmq鍙戦�佸拰鎺ユ敹鏁版嵁
 
 #include <string>
 #include <iostream>
