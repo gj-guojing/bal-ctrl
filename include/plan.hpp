@@ -33,8 +33,8 @@ namespace triple {
 
 			// initialize the struct parameters target, weightkp, weightKv and maxVel, maxAcc use default values
 			stateImp(double target, double kp, double kv) : targetPos{ target }, weightKp{ kp }, weightKv{ kv } {
-				this->maxVel = 2;
-				this->maxAcc = 5;
+				this->maxVel = 10;
+				this->maxAcc = 100;
 				this->trajectoryVel = 0;
 				this->trajectoryAcc = 0;
 

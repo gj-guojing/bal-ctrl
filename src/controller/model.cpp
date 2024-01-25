@@ -46,7 +46,8 @@ void triple::TripleModel::createModel() {
 	const double link2_pos_euler[6]{ 0, a + 165.468*1e-3, 0, PI / 2, 0, 0 };
 	const double link2_intertia_vecter[10]{ 1.469 , 0 , 0 , 0 , 0, 0, 7667.511 * 1e-6, 0, 0, 0 };
 	const double link3_pos_euler[6]{ 0,  a + b + 163.706*1e-3, 0, PI / 2, 0, 0 };
-	const double link3_intertia_vecter[10]{ 2.285 , 0 , 0 , 0 , 0, 0, 8719.303 * 1e-6, 0, 0, 0 };
+	const double link3_intertia_vecter[10]{ 1.141 , 0 , 0 , 0 , 0, 0, 4949.014 * 1e-6, 0, 0, 0 }; // 去掉了负载
+	// const double link3_intertia_vecter[10]{ 2.285 , 0 , 0 , 0 , 0, 0, 8719.303 * 1e-6, 0, 0, 0 }; // 加上负载
 	const double body_intertia_vecter[10]{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 	// 定义末端位置与321欧拉角
@@ -105,33 +106,42 @@ void triple::TripleModel::calcuForwardKinematics(std::vector<double>& data) {
 	double Joint_pos[3][6] = { {0, 0, 0, 0, 0, data[0]},
 							   {0, 0, 0, 0, 0, data[1]},
 							   {0, 0, 0, 0, 0, data[2]} };
+	double joint_velocity[3][6] = { {0, 0, 0, 0, 0, data[3]},
+							   {0, 0, 0, 0, 0, data[4]},
+							   {0, 0, 0, 0, 0, data[5]} };
 
 	for (int i = 0; i < 3; i++) {
 		m_->jointPool().at(i).makI()->setPe(*m_->jointPool().at(i).makJ(), Joint_pos[i], "123");
 	}
 	for (auto& m : m_->motionPool()) m.updP();
-
 	m_->generalMotionPool()[0].updP();
+
+	// calculate the forward velocity
+	for (int i = 0; i < m_->jointPool().size(); ++i) {
+		m_->jointPool().at(i).makI()->fatherPart().setVs(*m_->jointPool().at(i).makJ(), joint_velocity[i]);
+	}
+	for (auto& m : m_->motionPool()) m.updV();
+	m_->generalMotionPool()[0].updV();
+
+
+	
 
 	double ee_position[6] = { 0,0,0,0,0,0 };
 	m_->getOutputPos(ee_position);
 	ee_position[3] = std::fmod(ee_position[3], 2 * PI);
 
+	double ee_velocity[6] = { 0,0,0,0,0,0 };
+	dynamic_cast<aris::dynamic::GeneralMotion&>(m_->generalMotionPool()[0]).getMva(ee_velocity);
+
 	data[6] = ee_position[0];
 	data[7] = ee_position[1];
 	data[8] = ee_position[3];
 
-	// if (std::max({ std::abs(data[6] - ee_position[0]),
-	// 			   std::abs(data[7] - ee_position[1]) }) < 1e-5) {
-	// 	data[6] = ee_position[0];
-	// 	data[7] = ee_position[1];
-	// 	data[8] = ee_position[3];
-	// }
-	// else {
-	// 	std::cerr << " forward kinematics is wrong! " << std::endl;
-	// 	std::cout << data[6] << " " << data[7] << " " << data[8] << " " << std::endl;
-	// 	std::cout << ee_position[0] << " " << ee_position[1] << " " << ee_position[3] << " " << std::endl;
-	// }
+	data[9] = ee_velocity[0];
+	data[10] = ee_velocity[1];
+	data[11] = ee_velocity[5];
+
+    // std::cout << "**********************" << std::endl;
 }
 
 triple::TripleModel::TripleModel() {
@@ -139,11 +149,11 @@ triple::TripleModel::TripleModel() {
 }
 triple::TripleModel::~TripleModel() = default;
 
-// ARIS_REGISTRATION{
-//     aris::core::class_<triple::TripleModel>("TripleModel")
-//         .inherit<aris::dynamic::Model>()
-//         ;
-// }
+ARIS_REGISTRATION{
+    aris::core::class_<triple::TripleModel>("TripleModel")
+        .inherit<aris::dynamic::Model>()
+        ;
+}
 
 
 

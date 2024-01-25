@@ -1,4 +1,4 @@
-/// ½¨Á¢¿ØÖÆÆ÷
+/// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 #include "control.hpp"
 #include "../utils/utils.hpp"
 #include "./../solver/math.hpp"
@@ -8,6 +8,7 @@ namespace triple {
 
 	// calculate Controller implementation
 	struct Controller::Imp {
+		int count_ = 0;
 		Controller* controller_;
 		std::shared_ptr<aris::dynamic::Model> m_;
 		double cm_pos[3]{ 0.0, 0.0, 0.0 };
@@ -60,7 +61,7 @@ namespace triple {
 		//std::cout << std::endl;
 	}
 
-	// ½øÐÐ×´Ì¬¹À¼Æ 
+	// ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½ï¿½ï¿½ 
 	// stateVar: joint1, joint2, joint3, w1, w2, w3, ax, ay, bz, ja1, ja2, ja3
 	void Controller::estimateState() {
 		// 
@@ -135,7 +136,7 @@ namespace triple {
 
 		//Eigen::MatrixXd AngularM = EigenM * EigenQ;
 
-		//std::cout << "½Ç¶¯Á¿ÑéÖ¤£º " << AngularM(0, 0) << " " << AngularM(1, 0) << " " << AngularM(2, 0) << "  " << std::endl;
+		//std::cout << "ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ï¿½ï¿½ " << AngularM(0, 0) << " " << AngularM(1, 0) << " " << AngularM(2, 0) << "  " << std::endl;
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	}
 
@@ -145,7 +146,7 @@ namespace triple {
 		auto& forward_kinematic_solver = dynamic_cast<aris::dynamic::ForwardKinematicSolver&> (imp_->m_->solverPool().at(1));
 
 		////////////////////////////////////////////////////////////////// COM Accelerate test ///////////////////////////////////////////////////////////////////////////
-		// ³õÊ¼ÖÊÐÄx·½ÏòµÄ¼ÓËÙ¶È£»
+		// ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½xï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½Ù¶È£ï¿½
 		cptModelCm();
 		double cx_acc = imp_->cm_acc[0];
 
@@ -161,10 +162,10 @@ namespace triple {
 		Eigen::MatrixXd CoMJacobian(1, 3);
 		Eigen::VectorXd CoMCf(1);
 
-		// Èý¸ö¹Ø½ÚµÄ¼ÓËÙ¶È
+		// ï¿½ï¿½ï¿½ï¿½ï¿½Ø½ÚµÄ¼ï¿½ï¿½Ù¶ï¿½
 		qdd << imp_->stateVar[9], imp_->stateVar[10], imp_->stateVar[11];
 
-		// ²âÊÔ±äÁ¿
+		// ï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½
 		double test0[3]{ 0, 0, 0 };
 		double test1[3]{ 1, 0, 0 };
 		double test2[3]{ 0, 1, 0 };
@@ -441,7 +442,7 @@ namespace triple {
 
 	}
 
-	// ¼ÆËãÖÊÐÄÎ»ÖÃ£º
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½Ã£ï¿½
 	// c  = (m1*c1 + m2*c2 + m3*c3)/(m1+m2+m3);
 	// vc = (m1*vc1 + m2*vc2 + m3*vc3)/(m1+m2+m3);
 	// ac = (m1*ac1 + m2*ac2 + m3*ac3)/(m1+m2+m3);
@@ -494,14 +495,14 @@ namespace triple {
 		s_mma(6, 1, 6, im2, imp_->m_->partPool()[2].vs(), imp_->moment);
 		s_mma(6, 1, 6, im3, imp_->m_->partPool()[3].vs(), imp_->moment);
 
-		//std::cout << "¶¯Á¿ÒÔ¼°½Ç¶¯Á¿£º " << imp_->moment[0] << " " << imp_->moment[1] << " "  << imp_->moment[5] << " " << std::endl;
+		//std::cout << "ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½Ç¶ï¿½ï¿½ï¿½ï¿½ï¿½ " << imp_->moment[0] << " " << imp_->moment[1] << " "  << imp_->moment[5] << " " << std::endl;
 
 	}
 
 	// compute desired CoM accelerate
 	void Controller::cptdesiredCoMAcc() {
-		////////////////////////////////// ÖÊÐÄ´¦µÄ¼ÓËÙ¶È /////////////////////////////////////////////
-		// ÖÊÐÄ¼ÓËÙ¶È x ·½Ïò, ¾­¹ý²âÊÔÖÊÐÄ´¦µÄ×î´ó¼ÓËÙ¶ÈÎª 6, ×îºÃÓ¦¸ÃÐ¡ÓÚ 5 £¬ÏµÍ³²ÅÄÜ¿ØÖÆµÃ×¡¡£
+		////////////////////////////////// ï¿½ï¿½ï¿½Ä´ï¿½ï¿½Ä¼ï¿½ï¿½Ù¶ï¿½ /////////////////////////////////////////////
+		// ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½Ù¶ï¿½ x ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½Îª 6, ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½Ð¡ï¿½ï¿½ 5 ï¿½ï¿½ÏµÍ³ï¿½ï¿½ï¿½Ü¿ï¿½ï¿½Æµï¿½×¡ï¿½ï¿½
 		static double max_acc = 0;
 		double cx_d = imp_->moment[5] * 0.05;
 		double kp_cx = 10;
@@ -510,10 +511,15 @@ namespace triple {
 		vx_d = std::max(vx_d, -0.1);
 		vx_d = std::min(vx_d, 0.1);
 		double ax_d = kp_vcx * (vx_d - imp_->cm_vel[0]);
+		ax_d = std::max(ax_d, -1.0);
+		ax_d = std::min(ax_d, 1.0);
 		imp_->desiredAcc[2] = ax_d + 0 * (imp_->COMJacobian(0, 1) * imp_->desiredAcc[0] );
-		
+		 
+		// std::cout << "cm_vel: " << imp_->cm_vel[0] << std::endl; 
+		// std::cout << "ax_d: " << ax_d << std::endl; 
+		// std::cout << "imp_->desiredAcc[2]: " << imp_->desiredAcc[2] << std::endl;
 
-		// ÖÊÐÄ¼ÓËÙ¶È y ·½Ïò
+		// ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½Ù¶ï¿½ y ï¿½ï¿½ï¿½ï¿½
 		double cy_d = 0.45;
 		double kp_cy = 10;
 		double kp_vcy = 10;
@@ -540,24 +546,24 @@ namespace triple {
 		force2.setFce(force[1]);
 		forward_dynamic_solver.dynAccAndFce();
 
-		// µÃµ½Ä©¶ËÎ»ÖÃ
+		// ï¿½Ãµï¿½Ä©ï¿½ï¿½Î»ï¿½ï¿½
 		double pp[6]{ 0.0, 0.0, 0.0 }, vp[3]{ 0.0, 0.0, 0.0 }, ap[3]{ 0.0, 0.0, 0.0 };
 		ee.getMpe(pp);
 		aris::dynamic::s_as2ap(imp_->m_->partPool().back().vs(), imp_->m_->partPool().back().as(), pp, ap, vp);
 
-		// ¼ÆËãÖÊÐÄ¼ÓËÙ¶È
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½Ù¶ï¿½
 		this->cptModelCm();
 
-		// µç»ú¶Ë, Ã¿¸ö¹Ø½ÚµÄ¼ÓËÙ¶È£»
+		// ï¿½ï¿½ï¿½ï¿½ï¿½, Ã¿ï¿½ï¿½ï¿½Ø½ÚµÄ¼ï¿½ï¿½Ù¶È£ï¿½
 		double aj1 = 0.0;
 		double as[6];
 		for (auto& m : imp_->m_->motionPool()) m.updA();
 		imp_->m_->jointPool()[0].makI()->getAs(*imp_->m_->jointPool()[0].makJ(), as);
 		aj1 = as[5];
 
-		static int count = 0;
+		// std::cout << "imp_->count_" << imp_->count_ << std::endl;
 
-		if (++count < 3000) {
+		if (++imp_->count_ < 3000) {
 			if ((force[0] == 0) && (force[1] == 0)) {
 				// get b
 				imp_->B(0, 0) = ap[0];
@@ -608,63 +614,6 @@ namespace triple {
 			}
 		}
 
-		/////////////////////////////////// add cy accelerate ///////////////////////////
-
-		//if (++count < 3000) {
-		//	if ((force[0] == 0) && (force[1] == 0)) {
-		//		// get b
-		//		imp_->test_b(0, 0) = ap[0];
-		//		imp_->test_b(1, 0) = ap[1];
-		//		imp_->test_b(2, 0) = imp_->cm_acc[0];
-		//		imp_->test_b(3, 0) = imp_->cm_acc[1];
-		//	}
-		//	else if ((force[0] == 1) && (force[1] == 0)) {
-		//		imp_->test_A(0, 0) = ap[0] - imp_->test_b(0, 0);
-		//		imp_->test_A(1, 0) = ap[1] - imp_->test_b(1, 0);
-		//		imp_->test_A(2, 0) = imp_->cm_acc[0] - imp_->test_b(2, 0);
-		//		imp_->test_A(3, 0) = imp_->cm_acc[1] - imp_->test_b(3, 0);
-		//	}
-		//	else if ((force[0] == 0) && (force[1] == 1)) {
-		//		imp_->test_A(0, 1) = ap[0] - imp_->test_b(0, 0);
-		//		imp_->test_A(1, 1) = ap[1] - imp_->test_b(1, 0);
-		//		imp_->test_A(2, 1) = imp_->cm_acc[0] - imp_->test_b(2, 0);
-		//		imp_->test_A(3, 1) = imp_->cm_acc[1] - imp_->test_b(3, 0);
-		//	}
-		//	else {
-		//		std::cout << " ... ... " << std::endl;
-		//		std::cerr << "force error!" << std::endl;
-		//		std::cout << force[0] << " " << force[1] << " " << std::endl;
-		//		exit(1);
-		//	}
-		//}
-		//else {
-		//	if ((force[0] == 0) && (force[1] == 0)) {
-		//		// get b
-		//		imp_->test_b(0, 0) = ap[0];
-		//		imp_->test_b(1, 0) = ap[1];
-		//		imp_->test_b(2, 0) = imp_->cm_acc[0];
-		//		imp_->test_b(3, 0) = imp_->cm_acc[1];
-		//	}
-		//	else if ((force[0] == 1) && (force[1] == 0)) {
-		//		imp_->test_A(0, 0) = ap[0] - imp_->test_b(0, 0);
-		//		imp_->test_A(1, 0) = ap[1] - imp_->test_b(1, 0);
-		//		imp_->test_A(2, 0) = imp_->cm_acc[0] - imp_->test_b(2, 0);
-		//		imp_->test_A(3, 0) = imp_->cm_acc[1] - imp_->test_b(3, 0);
-
-		//	}
-		//	else if ((force[0] == 0) && (force[1] == 1)) {
-		//		imp_->test_A(0, 1) = ap[0] - imp_->test_b(0, 0);
-		//		imp_->test_A(1, 1) = ap[1] - imp_->test_b(1, 0);
-		//		imp_->test_A(2, 1) = imp_->cm_acc[0] - imp_->test_b(2, 0);
-		//		imp_->test_A(3, 1) = imp_->cm_acc[1] - imp_->test_b(3, 0);
-		//	}
-		//	else {
-		//		std::cout << " ... ... " << std::endl;
-		//		std::cerr << "force error!" << std::endl;
-		//		std::cout << force[0] << " " << force[1] << " " << std::endl;
-		//		exit(1);
-		//	}
-		//}
 	}
 
 	// 1.  [ddx, ddy]^T = A * torque + b
@@ -702,7 +651,7 @@ namespace triple {
 
 	}
 
-	// roy featherstone µ«ÊÇÇ°ÆÚ¹¤×÷»¹Ã»ÓÐ×öºÃ£¬´ó¸ÅµÄË¼Â·»ù±¾ÉÏ¾ÍÊÇÕâ¸öÑù×ÓµÄÁË
+	// roy featherstone ï¿½ï¿½ï¿½ï¿½Ç°ï¿½Ú¹ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½ï¿½ï¿½Åµï¿½Ë¼Â·ï¿½ï¿½ï¿½ï¿½ï¿½Ï¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½
 	void Controller::inverseMethodsolveTorque() {
 
 		double nextAcc = imp_->COMJacobian(0, 0) * imp_->stateVar[9] + imp_->COMJacobian(0, 1) * imp_->desiredAcc[0] + imp_->COMJacobian(0, 2) * imp_->desiredAcc[1] + imp_->COMCf(0, 0);
@@ -744,8 +693,6 @@ namespace triple {
 
 	// add CoM y to solve the torque by computing PeseudoInverse of A
 	void Controller::cptInverseA2toruqe() {
-		static int count_ = 0;
-
 		///////////////////// Set NEXT desired Acc //////////////////////
 		Eigen::MatrixXd Acc = Eigen::MatrixXd::Zero(3, 1);
 		Eigen::MatrixXd A = imp_->A;
@@ -791,8 +738,9 @@ namespace triple {
 		imp_->torque[1] = torq(1, 0);
 
 
-		if (++count_ % 10 == 0) {
-			std::cout << "------------------------------ count:" << count_ << " ---------------------" << std::endl;
+		if (imp_->count_ < 10) {
+		// if (imp_->count_ % 10 == 0) {
+			std::cout << "------------------------------ imp_->count_:" << imp_->count_ << " ---------------------" << std::endl;
 			std::cout << "imp_->A: " << std::endl;
 			std::cout << imp_->A << std::endl;
 			std::cout << "A: " << std::endl;
@@ -807,8 +755,6 @@ namespace triple {
 
 	// calculate torque
 	void Controller::calculateTorque() {
-		static int count_ = 0;
-
 		// size of input Accelerate
 		int ipt_size = 3;
 		// size of output torque
@@ -823,7 +769,7 @@ namespace triple {
 
 		//this->inverseMethodsolveTorque();
 
-		///////////////////////////////// QP Çó½â²ÎÊýÉèÖÃ ///////////////////////////////////////////////
+		///////////////////////////////// QP ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ///////////////////////////////////////////////
 
 		///////////////////// Set NEXT desired Acc //////////////////////
 		Eigen::MatrixXd Acc = Eigen::MatrixXd::Zero(ipt_size, 1);
@@ -831,7 +777,7 @@ namespace triple {
 		double comAcc_error = 0;
 		double abs_comAcc = std::abs(imp_->desiredAcc[2]);
 
-		// ÕâÀï¸ù¾ÝËùÐèµÄCAM£¬Éè¼Æ¿ØÖÆCAMµÄÎó²îµÄÈý´Îº¯Êý
+		// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½CAMï¿½ï¿½ï¿½ï¿½Æ¿ï¿½ï¿½ï¿½CAMï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îºï¿½ï¿½ï¿½
 		if ((abs_comAcc > 0) && (abs_comAcc < 0.2)) {
 			comAcc_error = 0.2;
 		}
@@ -849,8 +795,9 @@ namespace triple {
 		Acc(1, 0) = imp_->desiredAcc[1];
 		Acc(2, 0) = imp_->desiredAcc[2];
 
-		double lambda[5]{ 0.001, 0.001, 5, 8, 50 };
-		//if (count_ > 3000 ) {
+		// m1, m2, ax, ay, acx
+		double lambda[5]{ 0.01, 0.01, 1, 1,  10};
+		//if (imp_->count_ > 3000 ) {
 		//	lambda[2] = 1;
 		//	lambda[3] = 1;
 		//	lambda[4] = 2;
@@ -890,7 +837,7 @@ namespace triple {
 		u.block(0, 0, m, 1) = (Acc - imp_->B + error);
 		u.block(m, 0, n, 1) << 100, 100;
 
-		// x µÄÉèÖÃ
+		// x ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		Eigen::MatrixXd x = Eigen::MatrixXd::Zero(n + m, 1);
 		x = qpSolver(P, q, QP_A, l, u);
 
@@ -939,8 +886,8 @@ namespace triple {
 		imp_->torque[1] = std::min(torque(1, 0), max_fce);
 		imp_->torque[1] = std::max(torque(1, 0), -max_fce);
 
-		if (++count_ % 500 == 0) {
-				std::cout << "count " << count_ << " ---------------------------------------------------- " << std::endl;
+		// if (imp_->count_ % 500 == 0) {
+				std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
 				std::cout << " " << std::endl;
 				std::cout << "imp_->A: \n" << imp_->A << std::endl;
 				std::cout << "Acc: " << Acc(0, 0) << " " << Acc(1, 0) << " " << Acc(2, 0) << std::endl;
@@ -950,7 +897,7 @@ namespace triple {
 			//	Eigen::MatrixXd accAfter = imp_->A * torque + imp_->B;
 			//	std::cout << " Acc After: " << accAfter(0, 0) << "  " << accAfter(1, 0) << "  "
 			//		<< accAfter(2, 0) << std::endl;*/
-		}
+		// }
 
 		//std::cout << torque[0] << "  " << torque[1] << " " << std::endl;
 
@@ -973,7 +920,7 @@ namespace triple {
 		//};
 		//outputFile.close();
 
-		if (count_ < 0) {
+		if (imp_->count_ < 0) {
 			imp_->torque[0] = -0.1;
 			imp_->torque[1] = 0.1;
 		}
@@ -983,16 +930,16 @@ namespace triple {
 		//std::cout << "imp_->torque[0]: " << imp_->torque[0] << "imp_->torque[1]: " << imp_->torque[1] << std::endl;
 	}
 
-	// ¼ÆËãµÄ²âÊÔ´úÂë¶¼·ÅÔÚÕâÀï
+	// ï¿½ï¿½ï¿½ï¿½Ä²ï¿½ï¿½Ô´ï¿½ï¿½ë¶¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	void Controller::calculateTest() {
-		// ²âÊÔ¹Ì¶¨ÖÊÐÄµÄÎ»ÖÃ
+		// ï¿½ï¿½ï¿½Ô¹Ì¶ï¿½ï¿½ï¿½ï¿½Äµï¿½Î»ï¿½ï¿½
 		const int js = 6;
 		const int rows = 4;
 		const int cols = 2;
 		double lambda[js]{ 0.0, 0.0, 1, 1, 10, 2 };
 
 		Eigen::MatrixXd Acc(rows, 1);
-		Acc << imp_->desiredAcc[0], imp_->desiredAcc[1], imp_->desiredAcc[2], imp_->desiredAcc[3];
+		Acc << imp_->desiredAcc[0], imp_->desiredAcc[1], 0;
 
 		Eigen::MatrixXd error(rows, 1);
 		error << 0, 0, 0.01, 0.1;
@@ -1026,16 +973,15 @@ namespace triple {
 		u.block(0, 0, rows, 1) = (Acc - imp_->test_b + error);
 		u.block(rows, 0, cols, 1) << 100, 100;
 
-		// x µÄÉèÖÃ
+		// x ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		Eigen::MatrixXd x = Eigen::MatrixXd::Zero(js, 1);
 		x = qpSolver(P, q, QP_A, l, u, cols, rows);
 
 		imp_->torque[0] = x(0, 0);
 		imp_->torque[1] = x(1, 0);
 
-		static int count_ = 0;
-		if (++count_ % 50 == 0) {
-			std::cout << "count " << count_ << " ---------------------------------------------------- " << std::endl;
+		if (imp_->count_ % 50 == 0) {
+			std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
 			std::cout << " " << std::endl;
 			std::cout << "imp_->test_A: \n" << imp_->test_A << std::endl;
 			std::cout << "Acc: " << Acc(0, 0) << " " << Acc(1, 0) << " " << Acc(2, 0) << " " << Acc(3, 0) << std::endl;
@@ -1060,27 +1006,23 @@ namespace triple {
 	void Controller::verifyAccelerate(std::vector<double>& data) {
 
 		double error = 0;
-		static int count_ = 0;
+
 		for (int i = 0; i < lastrealAcc.size() - 1; ++i) {
 			error = std::max(std::abs(data[12 + i] - lastrealAcc[i]), error);
 		}
 
 		if (error > 1e-4 * 1.0)
 		{
-			if (count_ == 0)
-				++count_;
-			else {
-				std::cout << "acc desired:";
-				for (int i = 0; i < lastrealAcc.size(); i++) {
-					std::cout << lastrealAcc[i] << " ";
-				}
-
-				std::cout << "data back: " << std::endl;
-				std::cout << data[12] << " " << data[13] << " " << data[15] << " "
-					<< data[16] << " " << data[17] << " " << std::endl;
-				std::cout << "---------------------------- " << std::endl;
-				throw std::runtime_error("error : acc data not correct");
+			std::cout << "acc desired:";
+			for (int i = 0; i < lastrealAcc.size(); i++) {
+				std::cout << lastrealAcc[i] << " ";
 			}
+
+			std::cout << "data back: " << std::endl;
+			std::cout << data[12] << " " << data[13] << " " << data[15] << " "
+				<< data[16] << " " << data[17] << " " << std::endl;
+			std::cout << "---------------------------- " << std::endl;
+			throw std::runtime_error("error : acc data not correct");
 		}
 	}
 

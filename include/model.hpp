@@ -23,8 +23,8 @@ namespace triple  {
 		TripleModel();
 		~TripleModel();
 
-	private:
 		std::shared_ptr<aris::dynamic::Model> m_{nullptr};
+	private:
 	};
 }
 
