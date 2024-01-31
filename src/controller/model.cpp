@@ -25,7 +25,7 @@
 const double PI = 3.141592653589793;
 
 //  Create robot model
-void triple::TripleModel::createModel() {
+auto triple::TripleModel::createModel() -> std::unique_ptr<Model> {
 
 	double a = 0.325;
 	double b = 0.2;
@@ -46,8 +46,8 @@ void triple::TripleModel::createModel() {
 	const double link2_pos_euler[6]{ 0, a + 165.468*1e-3, 0, PI / 2, 0, 0 };
 	const double link2_intertia_vecter[10]{ 1.469 , 0 , 0 , 0 , 0, 0, 7667.511 * 1e-6, 0, 0, 0 };
 	const double link3_pos_euler[6]{ 0,  a + b + 163.706*1e-3, 0, PI / 2, 0, 0 };
-	const double link3_intertia_vecter[10]{ 1.141 , 0 , 0 , 0 , 0, 0, 4949.014 * 1e-6, 0, 0, 0 }; // 去掉了负载
-	// const double link3_intertia_vecter[10]{ 2.285 , 0 , 0 , 0 , 0, 0, 8719.303 * 1e-6, 0, 0, 0 }; // 加上负载
+	//const double link3_intertia_vecter[10]{ 1.141 , 0 , 0 , 0 , 0, 0, 4949.014 * 1e-6, 0, 0, 0 }; // 去掉了负载
+	const double link3_intertia_vecter[10]{ 2.285 , 0 , 0 , 0 , 0, 0, 8719.303 * 1e-6, 0, 0, 0 }; // 加上负载
 	const double body_intertia_vecter[10]{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 	// 定义末端位置与321欧拉角
@@ -91,12 +91,8 @@ void triple::TripleModel::createModel() {
 
 	model->init();
 	std::cout << " Successful modeling ! " << std::endl;
-	this->m_ = std::move(model);
-
-	if (model) {
-		std::cerr << " Model is not empty ! " << std::endl;
-	}
-
+	
+	return model;
 }
 
 // calculate forward Kinematics 
@@ -123,9 +119,6 @@ void triple::TripleModel::calcuForwardKinematics(std::vector<double>& data) {
 	for (auto& m : m_->motionPool()) m.updV();
 	m_->generalMotionPool()[0].updV();
 
-
-	
-
 	double ee_position[6] = { 0,0,0,0,0,0 };
 	m_->getOutputPos(ee_position);
 	ee_position[3] = std::fmod(ee_position[3], 2 * PI);
@@ -145,14 +138,11 @@ void triple::TripleModel::calcuForwardKinematics(std::vector<double>& data) {
 }
 
 triple::TripleModel::TripleModel() {
-	this->createModel();
 }
 triple::TripleModel::~TripleModel() = default;
 
 ARIS_REGISTRATION{
-    aris::core::class_<triple::TripleModel>("TripleModel")
-        .inherit<aris::dynamic::Model>()
-        ;
+    aris::core::class_<triple::TripleModel>("TripleModel").inherit<aris::dynamic::Model>();
 }
 
 

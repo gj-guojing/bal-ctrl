@@ -1,5 +1,8 @@
-/// ����������
-#include "control.hpp"
+﻿#include "control.hpp"
+#include <Eigen/Dense>
+#include <Eigen/Core>
+#include <Eigen/SVD>
+
 #include "../utils/utils.hpp"
 #include "./../solver/math.hpp"
 #include "./../solver/qpsolver.hpp"
@@ -15,6 +18,7 @@ namespace triple {
 		double cm_vel[3]{ 0.0, 0.0, 0.0 };
 		double cm_acc[3]{ 0.0, 0.0, 0.0 };
 		double moment[6]{ 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+		double lambda[5]{ 0.0, 0.0, 0.0, 0.0, 0.0 };
 		std::vector<double> stateVar;
 		std::vector<double> desiredAcc;
 		std::vector<double> torque;
@@ -22,15 +26,11 @@ namespace triple {
 		Eigen::MatrixXd B;
 		Eigen::MatrixXd COMJacobian;
 		Eigen::VectorXd COMCf;
-		Eigen::MatrixXd test_A;
-		Eigen::MatrixXd test_b;
+
 
 		Imp(Controller* controller) : controller_(controller) {
 			A = Eigen::MatrixXd::Zero(3, 2);
 			B = Eigen::MatrixXd::Zero(3, 1);
-			test_A = Eigen::MatrixXd::Zero(4, 2);
-			test_b = Eigen::MatrixXd::Zero(4, 1);
-
 		}
 	};
 
@@ -45,13 +45,6 @@ namespace triple {
 		//std::cout << std::endl;
 
 		std::copy(data.begin(), data.begin() + 6, imp_->stateVar.begin());
-		std::copy(data.end() - 7, data.end() - 1, imp_->stateVar.end() - 6);
-		////std::cout << "state variable end : " << std::endl;
-		//std::cout << imp_->stateVar.size() << std::endl;
-		//for (int i = 0; i < imp_->stateVar.size(); ++i) {
-		//	std::cout << imp_->stateVar[i] << " ";
-		//}
-		//std::cout << std::endl;
 
 		std::copy(acc.begin(), acc.end(), imp_->desiredAcc.begin());
 		//std::cout << imp_->desiredAcc.size() << std::endl;
@@ -61,7 +54,14 @@ namespace triple {
 		//std::cout << std::endl;
 	}
 
-	// ����״̬���� 
+	// set QP parameters 
+	void Controller::setQPparameters(double* lambda_data, int lambda_size) {
+		for (int i = 0; i < lambda_size; i++) {
+			imp_->lambda[i] = lambda_data[i];
+		}
+	}
+
+	// 进行状态估计 
 	// stateVar: joint1, joint2, joint3, w1, w2, w3, ax, ay, bz, ja1, ja2, ja3
 	void Controller::estimateState() {
 		// 
@@ -104,43 +104,11 @@ namespace triple {
 
 		this->cptModelCm();
 		this->cptModelAngularMoment();
+		this->calculateCoMJacobian();
 
-		this->test();
-
-		////////////////////////////////////////////////////////// test AngularMoment ////////////////////////////////////////////////////////
-		//int nM = 0;
-		//auto& inverse_dynamic_solver = dynamic_cast<aris::dynamic::InverseDynamicSolver&> (imp_->m_->solverPool().at(2));
-		//inverse_dynamic_solver.dynAccAndFce();
-		//inverse_dynamic_solver.cptGeneralInverseDynamicMatrix();
-		//nM = inverse_dynamic_solver.nM();
-
-		//const double* M = inverse_dynamic_solver.M();
-		//const double* h = inverse_dynamic_solver.h();
-
-		////std::cout << "M: " << std::endl;
-		////aris::dynamic::dsp(nM, nM, M);
-
-		////std::cout << "h: " << std::endl;
-		////aris::dynamic::dsp(nM, 1, h);
-
-		//// Eigen is the column pivot
-		//double m[9] = { 0 };
-		//for (int i = 0; i < nM; i++) {
-		//	for (int j = 0; j < nM; j++) {
-		//		m[nM * j + i] = M[nM * i + j];
-		//	}
-		//}
-		//Eigen::MatrixXd EigenM = Eigen::Map<Eigen::MatrixXd> (m, nM, nM);
-		//Eigen::VectorXd EigenQ(3);
-		//EigenQ << imp_->stateVar[3], imp_->stateVar[4], imp_->stateVar[5];
-
-		//Eigen::MatrixXd AngularM = EigenM * EigenQ;
-
-		//std::cout << "�Ƕ�����֤�� " << AngularM(0, 0) << " " << AngularM(1, 0) << " " << AngularM(2, 0) << "  " << std::endl;
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	}
 
-	void Controller::test() {
+	void Controller::calculateCoMJacobian() {
 		auto& ee = dynamic_cast<aris::dynamic::GeneralMotion&>(imp_->m_->generalMotionPool().at(0));
 
 		auto& forward_kinematic_solver = dynamic_cast<aris::dynamic::ForwardKinematicSolver&> (imp_->m_->solverPool().at(1));
@@ -442,7 +410,7 @@ namespace triple {
 
 	}
 
-	// ��������λ�ã�
+	// 计算质心位置：
 	// c  = (m1*c1 + m2*c2 + m3*c3)/(m1+m2+m3);
 	// vc = (m1*vc1 + m2*vc2 + m3*vc3)/(m1+m2+m3);
 	// ac = (m1*ac1 + m2*ac2 + m3*ac3)/(m1+m2+m3);
@@ -501,8 +469,8 @@ namespace triple {
 
 	// compute desired CoM accelerate
 	void Controller::cptdesiredCoMAcc() {
-		////////////////////////////////// ���Ĵ��ļ��ٶ� /////////////////////////////////////////////
-		// ���ļ��ٶ� x ����, �����������Ĵ��������ٶ�Ϊ 6, ���Ӧ��С�� 5 ��ϵͳ���ܿ��Ƶ�ס��
+		////////////////////////////////// 质心处的加速度 /////////////////////////////////////////////
+		// 质心加速度 x 方向, 经过测试质心处的最大加速度为 6, 最好应该小于 5 ，系统才能控制得住。
 		static double max_acc = 0;
 		double cx_d = imp_->moment[5] * 0.05;
 		double kp_cx = 10;
@@ -518,20 +486,7 @@ namespace triple {
 		// std::cout << "cm_vel: " << imp_->cm_vel[0] << std::endl; 
 		// std::cout << "ax_d: " << ax_d << std::endl; 
 		// std::cout << "imp_->desiredAcc[2]: " << imp_->desiredAcc[2] << std::endl;
-
-		// ���ļ��ٶ� y ����
-		double cy_d = 0.45;
-		double kp_cy = 10;
-		double kp_vcy = 10;
-		double vy_d = kp_cy * (cy_d - imp_->cm_pos[1]);
-		vy_d = std::max(vy_d, -0.2);
-		vy_d = std::min(vy_d, 0.2);
-		double ay_d = kp_vcy * (vy_d - imp_->cm_vel[1]);
-		//ay_d = std::min(ay_d, 1.0);
-		//ay_d = std::max(ay_d, -1.0);
-		imp_->desiredAcc[3] = ay_d;
 	}
-
 
 	// calculate A and B column
 	void Controller::calcAandBColumn(double* force) {
@@ -546,22 +501,20 @@ namespace triple {
 		force2.setFce(force[1]);
 		forward_dynamic_solver.dynAccAndFce();
 
-		// �õ�ĩ��λ��
+		// 得到末端位置
 		double pp[6]{ 0.0, 0.0, 0.0 }, vp[3]{ 0.0, 0.0, 0.0 }, ap[3]{ 0.0, 0.0, 0.0 };
 		ee.getMpe(pp);
 		aris::dynamic::s_as2ap(imp_->m_->partPool().back().vs(), imp_->m_->partPool().back().as(), pp, ap, vp);
 
-		// �������ļ��ٶ�
+		// 计算质心加速度
 		this->cptModelCm();
 
-		// �����, ÿ���ؽڵļ��ٶȣ�
+		// 电机端, 每个关节的加速度；
 		double aj1 = 0.0;
 		double as[6];
 		for (auto& m : imp_->m_->motionPool()) m.updA();
 		imp_->m_->jointPool()[0].makI()->getAs(*imp_->m_->jointPool()[0].makJ(), as);
 		aj1 = as[5];
-
-		// std::cout << "imp_->count_" << imp_->count_ << std::endl;
 
 		if (++imp_->count_ < 3000) {
 			if ((force[0] == 0) && (force[1] == 0)) {
@@ -635,7 +588,7 @@ namespace triple {
 		calcAandBColumn(force);
 
 	}
-
+	
 	// Because the communication has ONE STEP ERROR, we need to check  whether the calculate Acc is as same as the real Acc. 
 	void Controller::checkrealAcc(int m, int n) {
 
@@ -648,108 +601,6 @@ namespace triple {
 		lastrealAcc[0] = acc(0, 0);
 		lastrealAcc[1] = acc(1, 0);
 		lastrealAcc[2] = acc(2, 0);
-
-	}
-
-	// roy featherstone ����ǰ�ڹ�����û�����ã���ŵ�˼·�����Ͼ���������ӵ���
-	void Controller::inverseMethodsolveTorque() {
-
-		double nextAcc = imp_->COMJacobian(0, 0) * imp_->stateVar[9] + imp_->COMJacobian(0, 1) * imp_->desiredAcc[0] + imp_->COMJacobian(0, 2) * imp_->desiredAcc[1] + imp_->COMCf(0, 0);
-
-		///////////////////// Set NEXT desired Acc //////////////////////
-		Eigen::MatrixXd Acc = Eigen::MatrixXd::Zero(3, 1);
-		// desired Acc stateVar[6] stateVar[7] is calculated by PID, ax_d is the accelerate of CoM x positon.  
-		Acc(0, 0) = imp_->desiredAcc[0];
-		Acc(1, 0) = imp_->desiredAcc[1];
-		Acc(2, 0) = imp_->desiredAcc[2] - nextAcc;
-
-		Eigen::MatrixXd solverA = Eigen::MatrixXd::Zero(3, 3);
-		Eigen::MatrixXd rhs = Eigen::MatrixXd::Zero(3, 1);
-		solverA.block(0, 0, 1, 3) << imp_->A(2, 0), imp_->A(2, 1), 0;
-		solverA.block(1, 0, 1, 3) << imp_->A(1, 0), imp_->A(1, 1), 0;
-		solverA.block(1, 0, 1, 3) << imp_->A(0, 0), imp_->A(0, 1), -1;
-
-		rhs.block(0, 0, 3, 1) << (Acc(2, 0) - imp_->B(2, 0)), (Acc(1, 0) - imp_->B(1, 0)), (-imp_->B(0, 0));
-
-		Eigen::MatrixXd Inv_solverA(3, 3);
-		Inv_solverA = computePeseudoInverse(solverA);
-
-		Eigen::MatrixXd torq = Inv_solverA * rhs;
-
-		std::cout << " ------------------------------------------------------------------------------------------ " << std::endl;
-		std::cout << " Accelerate: " << std::endl;
-		std::cout << imp_->desiredAcc[0] << " " << imp_->desiredAcc[1] << " " << imp_->desiredAcc[2] << std::endl;
-
-		std::cout << " Accelerate: " << std::endl;
-		std::cout << Acc << std::endl;
-
-		std::cout << " Inverse Method solve Torque: " << std::endl;
-		std::cout << torq << std::endl;
-
-		//imp_->torque[0] = torq(0, 0);
-		//imp_->torque[1] = torq(1, 0);
-
-	}
-
-	// add CoM y to solve the torque by computing PeseudoInverse of A
-	void Controller::cptInverseA2toruqe() {
-		///////////////////// Set NEXT desired Acc //////////////////////
-		Eigen::MatrixXd Acc = Eigen::MatrixXd::Zero(3, 1);
-		Eigen::MatrixXd A = imp_->A;
-		Eigen::MatrixXd torq = Eigen::MatrixXd::Zero(2, 1);
-
-		double weight[4]{ 1, 1, 5, 10 };
-
-		// desired Acc stateVar[6] stateVar[7] is calculated by PID, ax_d is the accelerate of CoM x positon.  
-		Acc(0, 0) = imp_->desiredAcc[0];
-		Acc(1, 0) = imp_->desiredAcc[1];
-		Acc(2, 0) = imp_->desiredAcc[2];
-
-		Eigen::MatrixXd rhs = Acc - imp_->B;
-		for (int i = 0; i < 3; ++i) {
-			A(i, 0) *= weight[i];
-			A(i, 1) *= weight[i];
-			rhs(i, 0) *= weight[i];
-		}
-
-		Eigen::MatrixXd Inv_A = computePeseudoInverse(A);
-		torq = Inv_A * rhs;
-
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//Eigen::MatrixXd fd_Acc = Eigen::MatrixXd::Zero(4, 1);
-		//Eigen::MatrixXd fd_torq = Eigen::MatrixXd::Zero(2, 1);
-
-		//fd_Acc(0, 0) = imp_->desiredAcc[0];
-		//fd_Acc(1, 0) = imp_->desiredAcc[1];
-		//fd_Acc(2, 0) = imp_->desiredAcc[2];
-		//fd_Acc(3, 0) = imp_->desiredAcc[3];
-
-		//Eigen::MatrixXd fd_rhs = fd_Acc - imp_->fd_b;
-		//for (int i = 0; i < 4; ++i) {
-		//	imp_->fd_A(i, 0) *= weight[i];
-		//	imp_->fd_A(i, 1) *= weight[i];
-		//	fd_rhs(i, 0) *= weight[i];
-		//}
-
-		//Eigen::MatrixXd Inv_fd_A = computePeseudoInverse(imp_->fd_A);
-		//fd_torq = Inv_fd_A * fd_rhs;
-
-		imp_->torque[0] = torq(0, 0);
-		imp_->torque[1] = torq(1, 0);
-
-
-		if (imp_->count_ < 10) {
-		// if (imp_->count_ % 10 == 0) {
-			std::cout << "------------------------------ imp_->count_:" << imp_->count_ << " ---------------------" << std::endl;
-			std::cout << "imp_->A: " << std::endl;
-			std::cout << imp_->A << std::endl;
-			std::cout << "A: " << std::endl;
-			std::cout << A << std::endl;
-			std::cout << "imp_->B: " << std::endl;
-			std::cout << imp_->B << std::endl;
-			std::cout << "desired rhs:" << rhs(0, 0) << "  " << rhs(1, 0) << "  " << rhs(2, 0) << "  " << std::endl;
-			std::cout << "torque:" << torq(0, 0) << "  " << torq(1, 0) << " " << std::endl;
-		}
 
 	}
 
@@ -876,17 +727,13 @@ namespace triple {
 
 		Eigen::MatrixXd torque = x.block(0, 0, n, 1);
 
-		//this->cptInverseA2toruqe();
-
-		//this->calculateTest();
-
 		auto max_fce = 1000.0;
 		imp_->torque[0] = std::min(torque(0, 0), max_fce);
 		imp_->torque[0] = std::max(torque(0, 0), -max_fce);
 		imp_->torque[1] = std::min(torque(1, 0), max_fce);
 		imp_->torque[1] = std::max(torque(1, 0), -max_fce);
 
-		// if (imp_->count_ % 500 == 0) {
+		if (imp_->count_ % 500 == 0) {
 				std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
 				std::cout << " " << std::endl;
 				std::cout << "imp_->A: \n" << imp_->A << std::endl;
@@ -897,7 +744,7 @@ namespace triple {
 			//	Eigen::MatrixXd accAfter = imp_->A * torque + imp_->B;
 			//	std::cout << " Acc After: " << accAfter(0, 0) << "  " << accAfter(1, 0) << "  "
 			//		<< accAfter(2, 0) << std::endl;*/
-		// }
+		}
 
 		//std::cout << torque[0] << "  " << torque[1] << " " << std::endl;
 
@@ -928,71 +775,6 @@ namespace triple {
 		lastTorque = imp_->torque;
 
 		//std::cout << "imp_->torque[0]: " << imp_->torque[0] << "imp_->torque[1]: " << imp_->torque[1] << std::endl;
-	}
-
-	// ����Ĳ��Դ��붼��������
-	void Controller::calculateTest() {
-		// ���Թ̶����ĵ�λ��
-		const int js = 6;
-		const int rows = 4;
-		const int cols = 2;
-		double lambda[js]{ 0.0, 0.0, 1, 1, 10, 2 };
-
-		Eigen::MatrixXd Acc(rows, 1);
-		Acc << imp_->desiredAcc[0], imp_->desiredAcc[1], 0;
-
-		Eigen::MatrixXd error(rows, 1);
-		error << 0, 0, 0.01, 0.1;
-
-		// P
-		Eigen::MatrixXd P(js, js);
-		P.setZero();
-		P.diagonal() << lambda[0], lambda[1], lambda[2], lambda[3], lambda[4], lambda[5];
-
-		// q
-		Eigen::MatrixXd q(js, 1);
-		q.setZero();
-
-		// A 
-		Eigen::MatrixXd Ad(rows, cols);
-		Ad = imp_->test_A;
-
-		Eigen::MatrixXd QP_A(js, js);
-		QP_A.setZero();
-		QP_A.block(0, 0, rows, cols) = Ad;
-		QP_A.block(0, cols, rows, rows) = (-1) * Eigen::MatrixXd(rows, rows).setIdentity();
-		QP_A.block(rows, 0, cols, cols) = Eigen::MatrixXd(cols, cols).setIdentity();
-
-		// l
-		Eigen::MatrixXd l = Eigen::MatrixXd::Zero(js, 1);
-		l.block(0, 0, rows, 1) = (Acc - imp_->test_b - error);
-		l.block(rows, 0, cols, 1) << -100, -100;
-
-		// u
-		Eigen::MatrixXd u = Eigen::MatrixXd::Zero(js, 1);
-		u.block(0, 0, rows, 1) = (Acc - imp_->test_b + error);
-		u.block(rows, 0, cols, 1) << 100, 100;
-
-		// x ������
-		Eigen::MatrixXd x = Eigen::MatrixXd::Zero(js, 1);
-		x = qpSolver(P, q, QP_A, l, u, cols, rows);
-
-		imp_->torque[0] = x(0, 0);
-		imp_->torque[1] = x(1, 0);
-
-		if (imp_->count_ % 50 == 0) {
-			std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
-			std::cout << " " << std::endl;
-			std::cout << "imp_->test_A: \n" << imp_->test_A << std::endl;
-			std::cout << "Acc: " << Acc(0, 0) << " " << Acc(1, 0) << " " << Acc(2, 0) << " " << Acc(3, 0) << std::endl;
-			std::cout << "torque: " << x(0, 0) << "  " << x(1, 0) << " " << std::endl;
-			std::cout << "CoM x com: " << imp_->cm_pos[0] << " " << imp_->cm_pos[1] << " " << std::endl;
-
-			//std::cout << " Acc:  " << x(2, 0) << " " << x(3, 0) << " " << x(4, 0) << " " << std::endl;
-			//Eigen::MatrixXd accAfter = imp_->A * torque + imp_->B;
-			//std::cout << " Acc After: " << accAfter(0, 0) << "  " << accAfter(1, 0) << "  "
-			//	<< accAfter(2, 0) << std::endl;
-		}
 	}
 
 	// send torque
@@ -1026,8 +808,45 @@ namespace triple {
 		}
 	}
 
-	void Controller::init(triple::TripleModel* model) {
-		this->imp_->m_ = model->getmodel();
+	void Controller::calcuForwardKinematics(std::vector<double>& data) {
+		double Joint_pos[3][6] = { {0, 0, 0, 0, 0, data[0]},
+								   {0, 0, 0, 0, 0, data[1]},
+								   {0, 0, 0, 0, 0, data[2]} };
+		double joint_velocity[3][6] = { {0, 0, 0, 0, 0, data[3]},
+								   {0, 0, 0, 0, 0, data[4]},
+								   {0, 0, 0, 0, 0, data[5]} };
+
+		for (int i = 0; i < 3; i++) {
+			imp_->m_->jointPool().at(i).makI()->setPe(*imp_->m_->jointPool().at(i).makJ(), Joint_pos[i], "123");
+		}
+		for (auto& m : imp_->m_->motionPool()) m.updP();
+		imp_->m_->generalMotionPool()[0].updP();
+
+		// calculate the forward velocity
+		for (int i = 0; i < imp_->m_->jointPool().size(); ++i) {
+			imp_->m_->jointPool().at(i).makI()->fatherPart().setVs(*imp_->m_->jointPool().at(i).makJ(), joint_velocity[i]);
+		}
+		for (auto& m : imp_->m_->motionPool()) m.updV();
+		imp_->m_->generalMotionPool()[0].updV();
+
+		double ee_position[6] = { 0,0,0,0,0,0 };
+		imp_->m_->getOutputPos(ee_position);
+		ee_position[3] = std::fmod(ee_position[3], 2 * aris::PI);
+
+		double ee_velocity[6] = { 0,0,0,0,0,0 };
+		dynamic_cast<aris::dynamic::GeneralMotion&>(imp_->m_->generalMotionPool()[0]).getMva(ee_velocity);
+
+		data[6] = ee_position[0];
+		data[7] = ee_position[1];
+		data[8] = ee_position[3];
+
+		data[9] = ee_velocity[0];
+		data[10] = ee_velocity[1];
+		data[11] = ee_velocity[5];
+	}
+
+	void Controller::init(Model* model) {
+		imp_->m_.reset(model);
 	}
 
 	Controller::Controller(const Controller& other) : imp_(new Imp(*other.imp_)) {
@@ -1043,10 +862,10 @@ namespace triple {
 	}
 
 	//  Constructor Function
-	Controller::Controller(triple::TripleModel* model, int outputSize, int intputSize) : imp_(new Imp(this)) {
+	Controller::Controller(Model* model, int outputSize, int intputSize) : imp_(new Imp(this)) {
 		imp_->torque.resize(outputSize);
 		lastTorque.resize(outputSize);
-		this->imp_->m_ = model->getmodel();
+		imp_->m_.reset(model);		
 		imp_->stateVar.resize(12);
 		imp_->desiredAcc.resize(4);
 	}

@@ -1,5 +1,6 @@
 ﻿#include "qpsolver.hpp"
 
+
 // QP solver
 
 // x^T * P * x + q * x ;

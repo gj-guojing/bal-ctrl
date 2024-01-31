@@ -1,7 +1,17 @@
+# Vim tmp files
+*.swp
+
+#for qt
+CMakeLists.txt.user
+# for cmake
+CMakeCache.txt
+CMakeFiles
+# Makefile  
+cmake_install.cmake
+install_manifest.txt
+
 # dir
 .vs/
-cppzmq/
-lib/
 out/
 SimulinkCoSimulation/
 

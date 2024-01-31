@@ -1,6 +1,5 @@
 ﻿# CMakeList.txt: 顶层 CMake 项目文件，在此处执行全局配置
 # 并包含子项目。
-
 cmake_minimum_required (VERSION 3.12)
 
 project (triplependulum)
@@ -27,7 +26,6 @@ IF(WIN32)
         message(WARNING "File/Directory at variable TARGET_EIGEN_PATH not exists!")
     endif()
 endif(WIN32)
-
 find_package(Eigen3 REQUIRED)
 
 ## find osqp
@@ -37,34 +35,55 @@ IF(WIN32)
         message(STATUS "Directory to search Osqp at ${TARGET_OSQP_PATH}")
         list(APPEND CMAKE_PREFIX_PATH ${TARGET_OSQP_PATH})
     else()
-        message(WARNING "File/Directory at variable TARGET_EIGEN_PATH not exists!")
+        message(WARNING "File/Directory at variable TARGET_OSQP_PATH not exists!")
     endif()
 endif(WIN32)
 find_package(osqp REQUIRED)
 
+# 包含头文件
 include_directories(${aris_INCLUDE_DIRS})
 include_directories(${Eigen3_INCLUDE_DIRS})
 include_directories(${osqp_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-#add_executable (triplependulum  "src/main.cpp" "src/controller/model.cpp" "src/plan/plan.cpp" "src/zmq/zmqmsg.cpp" "src/zmq/statcal_util.cpp" 
-#                                "src/plan/pid.cpp" "src/controller/control.cpp"  "src/utils/utils.cpp" "src/solver/math.cpp" "src/solver/qpsolver.cpp"  )
-
 IF(WIN32)
-    set(BUILD_OBJECT_NAME triplependulum_lib ${BUILD_OBJECT_NAME})
+    set(BUILD_OBJECT_NAME bal_ctrl ${BUILD_OBJECT_NAME})
 endif(WIN32)
 if(UNIX)
-    set(BUILD_OBJECT_NAME bal_ctrl ${BUILD_OBJECT_NAME})
 endif(UNIX)
 
-add_library (${BUILD_OBJECT_NAME} SHARED "src/controller/model.cpp" "src/plan/plan.cpp" # "src/zmq/zmqmsg.cpp" "src/zmq/statcal_util.cpp" 
-                                "src/plan/pid.cpp" "src/controller/control.cpp"  "src/utils/utils.cpp" "src/solver/math.cpp" "src/solver/qpsolver.cpp" "include/export.h")
+file(GLOB_RECURSE ALL_LIBRARY_SRCS "src/*.cpp")
+file(GLOB_RECURSE ALL_LIBRARY_HDRS "include/*.hpp" "include/*.h")
+
+add_library (${BUILD_OBJECT_NAME} SHARED)
 target_compile_definitions(${BUILD_OBJECT_NAME} PRIVATE EXPORT)
+target_sources(${BUILD_OBJECT_NAME} 
+    PRIVATE
+        "src/controller/control.cpp"
+        "src/controller/model.cpp"
+        "src/plan/plan.cpp"
+        "src/solver/math.cpp"
+        "src/solver/math.hpp"
+        "src/solver/qpsolver.cpp"
+        "src/solver/qpsolver.hpp"
+        "src/zmq/zmqmsg.cpp"
+        "src/zmq/statcal_util.cpp"
+        "src/zmq/statcal_util.hpp"
+    PUBLIC
+        ${ALL_LIBRARY_HDRS}
+    )
 
-target_include_directories( ${BUILD_OBJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/lib)
-target_include_directories( ${BUILD_OBJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/cppzmq)
+# 动态库包含的地址
+target_include_directories(${BUILD_OBJECT_NAME}
+    PUBLIC 
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${PROJECT_SOURCE_DIR}/lib"
+        "${PROJECT_SOURCE_DIR}/cppzmq"
+    PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}")
 
-## 将需要的库链接到 triplependulum 中
+## 将需要的动态库链接到 triplependulum 中
 target_link_libraries(${BUILD_OBJECT_NAME} ${aris_LIBRARIES})
 if (TARGET Eigen3::Eigen)
     # Use the imported target
@@ -79,6 +98,12 @@ IF(WIN32)
     target_link_libraries(${BUILD_OBJECT_NAME} ${PROJECT_SOURCE_DIR}/lib/libzmq.lib)
     target_link_libraries(${BUILD_OBJECT_NAME} ${PROJECT_SOURCE_DIR}/lib/libzmq-v142-mt-4_3_4.lib)
 endif(WIN32)
+
+install(TARGETS ${BUILD_OBJECT_NAME}
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
 
 IF(WIN32)
     ## copy .dll 到 out 文件夹下
@@ -95,6 +120,22 @@ IF(WIN32)
 
     add_custom_command(TARGET ${BUILD_OBJECT_NAME} POST_BUILD        # Adds a post-build event to MyTest
         COMMAND ${CMAKE_COMMAND} -E copy  # which executes "cmake - E copy_if_different..."
-            "${osqp_DIR}/../../../bin/libosqp.dll"      # <--this is in-file
+            "${osqp_DIR}/../../../bin/osqp.dll"        # <--this is in-file   #Different versions of osqp have different names and this is an error prone area
             $<TARGET_FILE_DIR:${BUILD_OBJECT_NAME}>)                 # <--this is out-file path
 endif(WIN32)
+
+option(BUILD_DEMOS "build demos" OFF)
+if(BUILD_DEMOS)
+    set(DEMO_NAME triple_demo)
+    add_executable(${DEMO_NAME} "demo/main.cpp")
+    target_include_directories(${DEMO_NAME} 
+        PRIVATE 
+            ${aris_INCLUDE_DIRS}
+            ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_link_directories(${DEMO_NAME}
+        PRIVATE 
+            ${PROJECT_BINARY_DIR})
+    target_link_libraries(${DEMO_NAME}
+        ${aris_LIBRARIES}
+        ${BUILD_OBJECT_NAME})
+endif(BUILD_DEMOS)
