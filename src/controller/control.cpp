@@ -21,6 +21,7 @@ namespace triple {
 		double lambda[5]{ 0.0, 0.0, 0.0, 0.0, 0.0 };
 		std::vector<double> stateVar;
 		std::vector<double> desiredAcc;
+		std::vector<double> calcdesiredAcc;
 		std::vector<double> torque;
 		Eigen::MatrixXd A;
 		Eigen::MatrixXd B;
@@ -516,7 +517,7 @@ namespace triple {
 		imp_->m_->jointPool()[0].makI()->getAs(*imp_->m_->jointPool()[0].makJ(), as);
 		aj1 = as[5];
 
-		if (++imp_->count_ < 3000) {
+		if (imp_->count_ < 3000) {
 			if ((force[0] == 0) && (force[1] == 0)) {
 				// get b
 				imp_->B(0, 0) = ap[0];
@@ -733,6 +734,11 @@ namespace triple {
 		imp_->torque[1] = std::min(torque(1, 0), max_fce);
 		imp_->torque[1] = std::max(torque(1, 0), -max_fce);
 
+		imp_->calcdesiredAcc[0] = x(2, 0);
+		imp_->calcdesiredAcc[1] = x(3, 0);
+		imp_->calcdesiredAcc[2] = x(4, 0);
+
+
 		if (imp_->count_ % 500 == 0) {
 				std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
 				std::cout << " " << std::endl;
@@ -779,9 +785,16 @@ namespace triple {
 
 	// send torque
 	auto Controller::sendTorque()->std::vector<double> {
+		imp_->count_++;
 		this->calculateTorque();
 		return imp_->torque;
 	}
+
+	// get 
+	void Controller::sendDesiredAcc(std::vector<double>& desireddata) {
+		desireddata = imp_->calcdesiredAcc;
+	}
+
 
 	// verify the model accelerate 
 	// data : joint1, joint2, joint3, w1, w2, w3, x, y, angle, vx, vy, wz, ax, ay, bz, ja1, ja2, ja3
@@ -859,6 +872,7 @@ namespace triple {
 		lastTorque.resize(outputSize);
 		imp_->stateVar.resize(12);
 		imp_->desiredAcc.resize(4);
+		imp_->calcdesiredAcc.resize(3);
 	}
 
 	//  Constructor Function
@@ -868,6 +882,8 @@ namespace triple {
 		imp_->m_.reset(model);		
 		imp_->stateVar.resize(12);
 		imp_->desiredAcc.resize(4);
+		imp_->calcdesiredAcc.resize(3);
+
 	}
 	Controller::~Controller() = default;
 

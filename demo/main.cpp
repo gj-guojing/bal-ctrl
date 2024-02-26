@@ -31,12 +31,14 @@ const double PI = 3.141592653589793;
 
 int main(int argc, char* argv[])
 {
-	triple::TripleModel tripleModel;
-
-	triple::Controller triplePendulumController(tripleModel.createModel().release());
 
 	Zmqmsg zmqmsg;
 	zmqmsg.init();
+
+	triple::TripleModel tripleModel;
+	triple::Controller triplePendulumController(tripleModel.createModel().release());
+
+
 
 	// Initialize plan to get desired accelerate;
 	// (0.2 0.8) weightxy 5,10, kx = 2
@@ -49,6 +51,8 @@ int main(int argc, char* argv[])
 
 	std::vector<double> data{0};
 	std::vector<double> desiredValue{0};
+
+	std::vector<double> desiredAcc{0};
 
 	while (true) {
 		data = zmqmsg.get_request();
@@ -67,11 +71,13 @@ int main(int argc, char* argv[])
 
 		std::vector<double> torque = triplePendulumController.sendTorque();
 
+		triplePendulumController.sendDesiredAcc(desiredAcc);
+		std::cout << "desired Acc: " << desiredAcc[0] << " " << desiredAcc[1] << " " << desiredAcc[2] << " " << std::endl;
+
 		zmqmsg.send_msg(torque);
 
-
 		// 验证计算是否正确
-		// triplePendulumController.verifyAccelerate(data);
+		triplePendulumController.verifyAccelerate(data);
 
 	}
 

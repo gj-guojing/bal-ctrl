@@ -27,7 +27,8 @@ namespace triple {
 		void calculateAandB();
 		void cptdesiredCoMAcc();
 		void calculateTorque();
-		auto getDesiredAcc() -> double* { return lastrealAcc.data(); };
+		auto getlastRealAcc() -> double* { return lastrealAcc.data(); };
+		void sendDesiredAcc(std::vector<double>& desireddata);
 		auto sendTorque() -> std::vector<double>;
 		void verifyAccelerate(std::vector<double>& data);
 		void calculateCoMJacobian();		
