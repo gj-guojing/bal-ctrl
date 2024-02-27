@@ -46,6 +46,7 @@ namespace triple {
 		//std::cout << std::endl;
 
 		std::copy(data.begin(), data.begin() + 6, imp_->stateVar.begin());
+		std::copy(data.end() - 7, data.end() - 1, imp_->stateVar.end() - 6);
 
 		std::copy(acc.begin(), acc.end(), imp_->desiredAcc.begin());
 		//std::cout << imp_->desiredAcc.size() << std::endl;
@@ -619,8 +620,6 @@ namespace triple {
 		// Because the communication has ONE STEP ERROR, we need to check  whether the calculate Acc is as same as the real Acc. 
 		this->checkrealAcc(ipt_size, opt_size);
 
-		//this->inverseMethodsolveTorque();
-
 		///////////////////////////////// QP ���������� ///////////////////////////////////////////////
 
 		///////////////////// Set NEXT desired Acc //////////////////////
@@ -728,29 +727,18 @@ namespace triple {
 
 		Eigen::MatrixXd torque = x.block(0, 0, n, 1);
 
+		//std::cout << "qp solver: " << x << std::endl;
+
 		auto max_fce = 1000.0;
 		imp_->torque[0] = std::min(torque(0, 0), max_fce);
 		imp_->torque[0] = std::max(torque(0, 0), -max_fce);
 		imp_->torque[1] = std::min(torque(1, 0), max_fce);
 		imp_->torque[1] = std::max(torque(1, 0), -max_fce);
 
-		imp_->calcdesiredAcc[0] = x(2, 0);
-		imp_->calcdesiredAcc[1] = x(3, 0);
-		imp_->calcdesiredAcc[2] = x(4, 0);
-
-
-		if (imp_->count_ % 500 == 0) {
-				std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
-				std::cout << " " << std::endl;
-				std::cout << "imp_->A: \n" << imp_->A << std::endl;
-				std::cout << "Acc: " << Acc(0, 0) << " " << Acc(1, 0) << " " << Acc(2, 0) << std::endl;
-				std::cout << "torque: " << torque(0, 0) << "  " << torque(1, 0) << " " << std::endl;
-				std::cout << "CoM x com: " << imp_->cm_pos[0] << " " << imp_->cm_pos[1] << " " << std::endl;
-			//	/*std::cout << " Acc:  " << x(2, 0) << " " << x(3, 0) << " " << x(4, 0) << " " << std::endl;
-			//	Eigen::MatrixXd accAfter = imp_->A * torque + imp_->B;
-			//	std::cout << " Acc After: " << accAfter(0, 0) << "  " << accAfter(1, 0) << "  "
-			//		<< accAfter(2, 0) << std::endl;*/
-		}
+		Eigen::MatrixXd accAfter = imp_->A * torque + imp_->B;
+		imp_->calcdesiredAcc[0] = accAfter(2, 0);
+		imp_->calcdesiredAcc[1] = accAfter(3, 0);
+		imp_->calcdesiredAcc[2] = accAfter(4, 0);
 
 		//std::cout << torque[0] << "  " << torque[1] << " " << std::endl;
 
@@ -758,29 +746,21 @@ namespace triple {
 		acc_[0] = lastrealAcc[0];
 		acc_[1] = lastrealAcc[1];
 
-		//std::string str = "state var";
-		//saveDataTofile(imp_->stateVar, str, 0);
-
-		//str = "torque";
-		//saveDataTofile(imp_->torque, str, 0);
-
-		//str = "accelerate";
-		//saveDataTofile(acc_, str, true);
-
-		//std::ofstream outputFile("CoM_P.txt", std::ios::app);
-		//if (outputFile.is_open()) {
-		//	outputFile << imp_->cm_pos[0] << "  " << imp_->cm_pos[1] << "  " << std::endl;
-		//};
-		//outputFile.close();
-
-		if (imp_->count_ < 0) {
-			imp_->torque[0] = -0.1;
-			imp_->torque[1] = 0.1;
-		}
-
 		lastTorque = imp_->torque;
 
 		//std::cout << "imp_->torque[0]: " << imp_->torque[0] << "imp_->torque[1]: " << imp_->torque[1] << std::endl;
+	}
+
+	void Controller::dspComputingInformation(int period) {
+
+		if (imp_->count_ % period == 0) {
+			std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
+			std::cout << " " << std::endl;
+			std::cout << "imp_->A: \n" << imp_->A << std::endl;
+			std::cout << "Acc: " << imp_->desiredAcc[0] << " " << imp_->desiredAcc[1] << " " << imp_->desiredAcc[2] << std::endl;
+			std::cout << "torque: " << imp_->torque[0] << "  " << imp_->torque[1] << " " << std::endl;
+			std::cout << "CoM x com: " << imp_->cm_pos[0] << " " << imp_->cm_pos[1] << " " << std::endl;
+		}
 	}
 
 	// send torque
@@ -790,11 +770,26 @@ namespace triple {
 		return imp_->torque;
 	}
 
-	// get 
+	// send joint and end-effector accelerations 
 	void Controller::sendDesiredAcc(std::vector<double>& desireddata) {
-		desireddata = imp_->calcdesiredAcc;
-	}
 
+		std::vector<double> joint_acc(5);
+
+		auto& force1 = dynamic_cast<aris::dynamic::SingleComponentForce&>(imp_->m_->forcePool().at(0));
+		auto& force2 = dynamic_cast<aris::dynamic::SingleComponentForce&>(imp_->m_->forcePool().at(1));
+		auto& forward_dynamic_solver = dynamic_cast<aris::dynamic::ForwardDynamicSolver&>(imp_->m_->solverPool().at(3));
+
+		force1.setFce(imp_->torque[0]);
+		force2.setFce(imp_->torque[1]);
+		forward_dynamic_solver.dynAccAndFce();
+
+		joint_acc[0] = imp_->m_->motionPool()[1].ma();
+		joint_acc[1] = imp_->m_->motionPool()[2].ma();
+
+		joint_acc.insert(joint_acc.end(), imp_->calcdesiredAcc.begin(), imp_->calcdesiredAcc.end());
+
+		desireddata = joint_acc;
+	}
 
 	// verify the model accelerate 
 	// data : joint1, joint2, joint3, w1, w2, w3, x, y, angle, vx, vy, wz, ax, ay, bz, ja1, ja2, ja3
@@ -806,7 +801,7 @@ namespace triple {
 			error = std::max(std::abs(data[12 + i] - lastrealAcc[i]), error);
 		}
 
-		if (error > 1e-4 * 1.0)
+		if (error > 1e-2 * 1.0)
 		{
 			std::cout << "acc desired:";
 			for (int i = 0; i < lastrealAcc.size(); i++) {

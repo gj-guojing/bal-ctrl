@@ -45,7 +45,7 @@ include_directories(${aris_INCLUDE_DIRS})
 include_directories(${Eigen3_INCLUDE_DIRS})
 include_directories(${osqp_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/demo)
 
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "/*.cpp")
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "${HEAD_PATH}/*.hpp" "${HEAD_PATH}/*.h") 

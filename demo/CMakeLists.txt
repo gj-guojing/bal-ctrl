@@ -26,3 +26,8 @@ target_include_directories(${EXE_NAME}
 target_link_libraries(${EXE_NAME}
         ${aris_LIBRARIES}
         ${LIB_NAME})
+
+add_custom_command(TARGET ${EXE_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "${LIB_PATH}/src/src.dll"
+        $<TARGET_FILE_DIR:${EXE_NAME}>)

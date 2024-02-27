@@ -34,7 +34,7 @@ namespace triple {
 		void calculateCoMJacobian();		
 		void checkrealAcc(int m, int n);
 		void calcuForwardKinematics(std::vector<double>& data);
-
+		void dspComputingInformation(int period = 100);
 
 		Controller(const Controller& other);
 		explicit Controller(int outputSize = 2, int intputSize = 3);

@@ -38,14 +38,12 @@ int main(int argc, char* argv[])
 	triple::TripleModel tripleModel;
 	triple::Controller triplePendulumController(tripleModel.createModel().release());
 
-
-
 	// Initialize plan to get desired accelerate;
 	// (0.2 0.8) weightxy 5,10, kx = 2
 	//std::vector<double> targetxy{ 0.16, 1.0 };
 	//std::vector<double> weightxy{ 5, 10, 2, 8 };
 
-	std::vector<double> targetxy{ 0, 0.725 };
+	std::vector<double> targetxy{ 0.01, 0.725 };
 	std::vector<double> weightxy{ 1, 10, 1, 10 };
 	triple::fixedPlan fixedPointPlan(targetxy, weightxy);
 
@@ -72,7 +70,7 @@ int main(int argc, char* argv[])
 		std::vector<double> torque = triplePendulumController.sendTorque();
 
 		triplePendulumController.sendDesiredAcc(desiredAcc);
-		std::cout << "desired Acc: " << desiredAcc[0] << " " << desiredAcc[1] << " " << desiredAcc[2] << " " << std::endl;
+		//std::cout << "desired Acc: " << desiredAcc[0] << " " << desiredAcc[1] << " " << desiredAcc[2] << " " << std::endl;
 
 		zmqmsg.send_msg(torque);
 

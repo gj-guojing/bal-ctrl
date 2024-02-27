@@ -45,7 +45,7 @@ auto triple::TripleModel::createModel() -> std::unique_ptr<Model> {
 	const double link1_intertia_vector[10]{ 1.915 , 0 , 0 , 0 , 0, 0, 25720.752 * 1e-6, 0, 0, 0 };
 	const double link2_pos_euler[6]{ 0, a + 165.468*1e-3, 0, PI / 2, 0, 0 };
 	const double link2_intertia_vecter[10]{ 1.469 , 0 , 0 , 0 , 0, 0, 7667.511 * 1e-6, 0, 0, 0 };
-	const double link3_pos_euler[6]{ 0,  a + b + 163.706*1e-3, 0, PI / 2, 0, 0 };
+	const double link3_pos_euler[6]{ 0,  a + b + 127.337*1e-3, 0, PI / 2, 0, 0 };
 	const double link3_intertia_vecter[10]{ 1.141 , 0 , 0 , 0 , 0, 0, 4949.014 * 1e-6, 0, 0, 0 }; // 去掉了负载
 	//const double link3_intertia_vecter[10]{ 2.285 , 0 , 0 , 0 , 0, 0, 8719.303 * 1e-6, 0, 0, 0 }; // 加上负载
 	const double body_intertia_vecter[10]{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
