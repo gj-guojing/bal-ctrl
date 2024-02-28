@@ -74,14 +74,14 @@ void triple::TripleModel::createModel() {
 	auto& joint3 = model->addRevoluteJoint(link3, link2, joint3_position, joint3_axis);
 
 	// 添加驱动 Joint1 为被动关节，不用加motion
-	auto& motion1 = model->addMotion(joint1);
+	// auto& motion1 = model->addMotion(joint1);
 	auto& motion2 = model->addMotion(joint2);
 	auto& motion3 = model->addMotion(joint3);
 
     double motion_frc1[3]{0, 0, 0};//静摩擦力，粘性、惯量
-    double motion_frc2[3]{5 * 1e-1, 1 * 1e-2, 1002 * 1e-7};//静摩擦力，粘性、惯量
+    double motion_frc2[3]{1 * 1e-2, 2 * 1e-1, 1002 * 1e-7};//静摩擦力，粘性、惯量
     // double motion_frc1[3]{0.1, 0.01, 1002 * 1e-7}; //静摩擦力，粘性、惯量
-    double motion_frc3[3]{5 * 1e-1, 1 * 1e-2, 1002 * 1e-7};//静摩擦力，粘性、惯量
+    double motion_frc3[3]{1 * 1e-2, 2 * 1e-1, 1002 * 1e-7};//静摩擦力，粘性、惯量
     // motion1.setFrcCoe(motion_frc1);
     motion2.setFrcCoe(motion_frc2);
     motion3.setFrcCoe(motion_frc3);
