@@ -45,9 +45,12 @@ void triple::TripleModel::createModel() {
 	const double link1_intertia_vector[10]{ 1.915 , 0 , 0 , 0 , 0, 0, 25720.752 * 1e-6, 0, 0, 0 };
 	const double link2_pos_euler[6]{ 0, a + 165.468*1e-3, 0, PI / 2, 0, 0 };
 	const double link2_intertia_vecter[10]{ 1.469 , 0 , 0 , 0 , 0, 0, 7667.511 * 1e-6, 0, 0, 0 };
-	const double link3_pos_euler[6]{ 0,  a + b + 163.706*1e-3, 0, PI / 2, 0, 0 };
-	const double link3_intertia_vecter[10]{ 1.141 , 0 , 0 , 0 , 0, 0, 4949.014 * 1e-6, 0, 0, 0 }; // 去掉了负载
-	// const double link3_intertia_vecter[10]{ 2.285 , 0 , 0 , 0 , 0, 0, 8719.303 * 1e-6, 0, 0, 0 }; // 加上负载
+	// 去掉了负载
+	const double link3_pos_euler[6]{ 0,  a + b + 127.337*1e-3, 0, PI / 2, 0, 0 };
+	const double link3_intertia_vecter[10]{ 1.141 , 0 , 0 , 0 , 0, 0, 4949.014 * 1e-6, 0, 0, 0 }; 
+	// 加上负载
+	// const double link3_pos_euler[6]{ 0,  a + b + 163.706*1e-3, 0, PI / 2, 0, 0 };
+	// const double link3_intertia_vecter[10]{ 2.285 , 0 , 0 , 0 , 0, 0, 8719.303 * 1e-6, 0, 0, 0 }; 
 	const double body_intertia_vecter[10]{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 	// 定义末端位置与321欧拉角
@@ -74,6 +77,14 @@ void triple::TripleModel::createModel() {
 	auto& motion1 = model->addMotion(joint1);
 	auto& motion2 = model->addMotion(joint2);
 	auto& motion3 = model->addMotion(joint3);
+
+    double motion_frc1[3]{0, 0, 0};//静摩擦力，粘性、惯量
+    double motion_frc2[3]{5 * 1e-1, 1 * 1e-2, 1002 * 1e-7};//静摩擦力，粘性、惯量
+    // double motion_frc1[3]{0.1, 0.01, 1002 * 1e-7}; //静摩擦力，粘性、惯量
+    double motion_frc3[3]{5 * 1e-1, 1 * 1e-2, 1002 * 1e-7};//静摩擦力，粘性、惯量
+    // motion1.setFrcCoe(motion_frc1);
+    motion2.setFrcCoe(motion_frc2);
+    motion3.setFrcCoe(motion_frc3);
 
 	// 添加末端，第一个参数表明末端位于link4上，第二个参数表明末端的位姿是相对于地面的，后两个参数定义了末端的起始位姿
 	auto& end_effector = model->addGeneralMotionByPe(link3, model->ground(), body_position_and_euler321, "321");

@@ -788,7 +788,7 @@ namespace triple {
 			comAcc_error = 0.0;
 		}
 
-		error << 0, 0.0, 0;// comAcc_error;
+		error << 0, 0.0, comAcc_error;
 
 		// desired Acc stateVar[6] stateVar[7] is calculated by PID, ax_d is the accelerate of CoM x positon.  
 		Acc(0, 0) = imp_->desiredAcc[0];
@@ -796,7 +796,7 @@ namespace triple {
 		Acc(2, 0) = imp_->desiredAcc[2];
 
 		// m1, m2, ax, ay, acx
-		double lambda[5]{ 0.01, 0.01, 1, 1,  10};
+		double lambda[5]{ 0.01, 0.01, 2, 2,  20};
 		//if (imp_->count_ > 3000 ) {
 		//	lambda[2] = 1;
 		//	lambda[3] = 1;
@@ -886,7 +886,7 @@ namespace triple {
 		imp_->torque[1] = std::min(torque(1, 0), max_fce);
 		imp_->torque[1] = std::max(torque(1, 0), -max_fce);
 
-		// if (imp_->count_ % 500 == 0) {
+		if (imp_->count_ % 200 == 0) {
 				std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
 				std::cout << " " << std::endl;
 				std::cout << "imp_->A: \n" << imp_->A << std::endl;
@@ -897,7 +897,7 @@ namespace triple {
 			//	Eigen::MatrixXd accAfter = imp_->A * torque + imp_->B;
 			//	std::cout << " Acc After: " << accAfter(0, 0) << "  " << accAfter(1, 0) << "  "
 			//		<< accAfter(2, 0) << std::endl;*/
-		// }
+		}
 
 		//std::cout << torque[0] << "  " << torque[1] << " " << std::endl;
 
