@@ -600,6 +600,7 @@ namespace triple {
 		torq(0, 0) = lastTorque[0];
 		torq(1, 0) = lastTorque[1];
 		acc = imp_->A * torq + imp_->B;
+
 		lastrealAcc[0] = acc(0, 0);
 		lastrealAcc[1] = acc(1, 0);
 		lastrealAcc[2] = acc(2, 0);
@@ -736,15 +737,9 @@ namespace triple {
 		imp_->torque[1] = std::max(torque(1, 0), -max_fce);
 
 		Eigen::MatrixXd accAfter = imp_->A * torque + imp_->B;
-		imp_->calcdesiredAcc[0] = accAfter(2, 0);
-		imp_->calcdesiredAcc[1] = accAfter(3, 0);
-		imp_->calcdesiredAcc[2] = accAfter(4, 0);
-
-		//std::cout << torque[0] << "  " << torque[1] << " " << std::endl;
-
-		std::vector<double> acc_(2);
-		acc_[0] = lastrealAcc[0];
-		acc_[1] = lastrealAcc[1];
+		imp_->calcdesiredAcc[0] = accAfter(0, 0);
+		imp_->calcdesiredAcc[1] = accAfter(1, 0);
+		imp_->calcdesiredAcc[2] = accAfter(2, 0);
 
 		lastTorque = imp_->torque;
 
@@ -765,15 +760,16 @@ namespace triple {
 
 	// send torque
 	auto Controller::sendTorque()->std::vector<double> {
-		imp_->count_++;
 		this->calculateTorque();
+		imp_->count_++;
+
 		return imp_->torque;
 	}
 
 	// send joint and end-effector accelerations 
 	void Controller::sendDesiredAcc(std::vector<double>& desireddata) {
 
-		std::vector<double> joint_acc(5);
+		std::vector<double> joint_acc(6);
 
 		auto& force1 = dynamic_cast<aris::dynamic::SingleComponentForce&>(imp_->m_->forcePool().at(0));
 		auto& force2 = dynamic_cast<aris::dynamic::SingleComponentForce&>(imp_->m_->forcePool().at(1));
@@ -783,10 +779,18 @@ namespace triple {
 		force2.setFce(imp_->torque[1]);
 		forward_dynamic_solver.dynAccAndFce();
 
-		joint_acc[0] = imp_->m_->motionPool()[1].ma();
-		joint_acc[1] = imp_->m_->motionPool()[2].ma();
+		for (auto& m : imp_->m_->motionPool()) m.updA();
+		// 电机端, 每个关节的加速度；
+		double as[6];
+		imp_->m_->jointPool()[0].makI()->fatherPart().getAs(*imp_->m_->jointPool()[0].makJ(), as);
 
-		joint_acc.insert(joint_acc.end(), imp_->calcdesiredAcc.begin(), imp_->calcdesiredAcc.end());
+		joint_acc[0] = as[5];
+		joint_acc[1] = imp_->m_->motionPool()[1].ma();
+		joint_acc[2] = imp_->m_->motionPool()[2].ma();
+
+		joint_acc.insert(joint_acc.begin()+3, imp_->calcdesiredAcc.begin(), imp_->calcdesiredAcc.end());
+		/*std::cout << "desired Acc: " << joint_acc[0] << " " << joint_acc[1] << " " << joint_acc[2] << " "
+			<< joint_acc[3] << " " << joint_acc[4] << " " << joint_acc[5] << " " << std::endl;*/
 
 		desireddata = joint_acc;
 	}
@@ -807,6 +811,7 @@ namespace triple {
 			for (int i = 0; i < lastrealAcc.size(); i++) {
 				std::cout << lastrealAcc[i] << " ";
 			}
+			std::cout << std::endl;
 
 			std::cout << "data back: " << std::endl;
 			std::cout << data[12] << " " << data[13] << " " << data[15] << " "
