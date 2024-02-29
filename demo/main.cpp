@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
 		std::vector<double> torque = triplePendulumController.sendTorque();
 
 		triplePendulumController.sendDesiredAcc(desiredAcc);
-		//std::cout << "desired Acc: " << desiredAcc[0] << " " << desiredAcc[1] << " " << desiredAcc[2] << " " << std::endl;
+		std::cout << "desired Acc: " << desiredAcc[0] << " " << desiredAcc[1] << " " << desiredAcc[2] << " " << std::endl;
 
 		zmqmsg.send_msg(torque);
 
