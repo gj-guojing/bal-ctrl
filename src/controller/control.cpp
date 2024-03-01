@@ -103,11 +103,6 @@ namespace triple {
 		}
 		for (auto& m : imp_->m_->motionPool()) m.updA();
 		ee.updA();
-
-		this->cptModelCm();
-		this->cptModelAngularMoment();
-		this->calculateCoMJacobian();
-
 	}
 
 	void Controller::calculateCoMJacobian() {
@@ -136,36 +131,49 @@ namespace triple {
 		qdd << imp_->stateVar[9], imp_->stateVar[10], imp_->stateVar[11];
 
 		// ���Ա���
-		double test0[3]{ 0, 0, 0 };
-		double test1[3]{ 1, 0, 0 };
-		double test2[3]{ 0, 1, 0 };
-		double test3[3]{ 0, 0, 1 };
-		double ee_Maa[6]{ 0, 0, 0, 0, 0, 0 };
+		double test0[3][6]{ {0, 0, 0, 0, 0, 0},
+							{0, 0, 0, 0, 0, 0}, 
+							{0, 0, 0, 0, 0, 0} };
 
-		for (int i = 0; i < 3; ++i) {
-			imp_->m_->motionPool().at(i).setMa(test0[i]);
+		double test1[3][6]{ {0, 0, 0, 0, 0, 1},
+							{0, 0, 0, 0, 0, 0},
+							{0, 0, 0, 0, 0, 0} };
+
+		double test2[3][6]{ {0, 0, 0, 0, 0, 0},
+							{0, 0, 0, 0, 0, 1},
+							{0, 0, 0, 0, 0, 0} };
+
+		double test3[3][6]{ {0, 0, 0, 0, 0, 0},
+							{0, 0, 0, 0, 0, 0},
+							{0, 0, 0, 0, 0, 1} };
+
+		double ee_Maa[6]{ 0, 0, 0, 0, 0, 0 };
+		
+		// set motion acceleration 
+		for (int i = 0; i < imp_->m_->jointPool().size(); ++i) {
+			imp_->m_->jointPool().at(i).makI()->fatherPart().setAs(*imp_->m_->jointPool().at(i).makJ(), test0[i]);
 		}
-		forward_kinematic_solver.dynAccAndFce();
 		cptModelCm();
+		ee.updA();
 		ee.getMaa(ee_Maa);
 		Cf << 0, ee_Maa[0], ee_Maa[1];
 		CoMCf(0, 0) = imp_->cm_acc[0];
 
 
-		for (int i = 0; i < 3; ++i) {
-			imp_->m_->motionPool().at(i).setMa(test1[i]);
+		for (int i = 0; i < imp_->m_->jointPool().size(); ++i) {
+			imp_->m_->jointPool().at(i).makI()->fatherPart().setAs(*imp_->m_->jointPool().at(i).makJ(), test1[i]);
 		}
-		forward_kinematic_solver.dynAccAndFce();
 		cptModelCm();
+		ee.updA();
 		ee.getMaa(ee_Maa);
 		Jacobian.block(0, 0, 3, 1) << 1, (ee_Maa[0] - Cf(1, 0)), (ee_Maa[1] - Cf(2, 0));
 		CoMJacobian(0, 0) = (imp_->cm_acc[0] - CoMCf[0]);
 
-		for (int i = 0; i < 3; ++i) {
-			imp_->m_->motionPool().at(i).setMa(test2[i]);
+		for (int i = 0; i < imp_->m_->jointPool().size(); ++i) {
+			imp_->m_->jointPool().at(i).makI()->fatherPart().setAs(*imp_->m_->jointPool().at(i).makJ(), test2[i]);
 		}
-		forward_kinematic_solver.dynAccAndFce();
 		cptModelCm();
+		ee.updA();
 		ee.getMaa(ee_Maa);
 		Jacobian.block(0, 1, 3, 1) << 0, (ee_Maa[0] - Cf(1, 0)), (ee_Maa[1] - Cf(2, 0));
 		CoMJacobian(0, 1) = (imp_->cm_acc[0] - CoMCf[0]);
@@ -173,11 +181,11 @@ namespace triple {
 		//std::cout << " Jacobian1: " << Jacobian << std::endl;
 
 
-		for (int i = 0; i < 3; ++i) {
-			imp_->m_->motionPool().at(i).setMa(test3[i]);
+		for (int i = 0; i < imp_->m_->jointPool().size(); ++i) {
+			imp_->m_->jointPool().at(i).makI()->fatherPart().setAs(*imp_->m_->jointPool().at(i).makJ(), test3[i]);
 		}
-		forward_kinematic_solver.dynAccAndFce();
 		cptModelCm();
+		ee.updA();
 		ee.getMaa(ee_Maa);
 		Jacobian.block(0, 2, 3, 1) << 0, (ee_Maa[0] - Cf(1, 0)), (ee_Maa[1] - Cf(2, 0));
 		CoMJacobian(0, 2) = (imp_->cm_acc[0] - CoMCf[0]);
@@ -196,219 +204,6 @@ namespace triple {
 		imp_->COMJacobian = CoMJacobian;
 		imp_->COMCf = CoMCf;
 
-		//std::cout << " q1_accelerate: " << qdd(0) << "  x acc: " << imp_->stateVar[6] << "  y acc: " << imp_->stateVar[7] << std::endl;
-		//std::cout << " the answer is: " << answer(0) << "  x acc: " << answer(1) << "  y acc: " << answer(2) << std::endl;
-
-		//std::cout << " CoM x acc is : " << cx_acc << std::endl;
-		//std::cout << " the answer is: " << com_answer(0, 0) << std::endl;
-		//std::cout << " the answer_ is: " << com_answer_(0, 0) << std::endl;
-
-		////////////////////////////////////////////////////////////////// COM Accelerate test ///////////////////////////////////////////////////////////////////////////
-
-		//Eigen::VectorXd Qdd(2);
-		//Qdd << imp_->stateVar[10], imp_->stateVar[11];
-
-		//cptModelCm();
-		//double cxa = imp_->cm_acc[0];
-
-		//double test0[3]{ 0.0, 0.0, 0.0 };
-		//double test1[3]{ 1.0, 0.0, 0.0 };
-		//double test2[3]{ 0.0, 1.0, 0.0 };
-		////double test3[3]{ 0.0, 0.0, 1.0 };
-
-		//double ee_Maa[6]{ 0, 0, 0, 0, 0, 0 };
-
-		//Eigen::VectorXd Cf(3);
-		//Eigen::MatrixXd Jacobian(3, 2);
-		//Cf.setZero();
-		//Jacobian.setZero();
-
-		//imp_->m_->motionPool().at(0).setMa(imp_->stateVar[9]);
-		//for (int i = 1; i < 3; ++i) {
-		//	imp_->m_->motionPool().at(i).setMa(test0[i-1]);
-		//}
-		//forward_kinematic_solver.dynAccAndFce();
-		//cptModelCm();
-		//ee.getMaa(ee_Maa);
-		//Cf << ee_Maa[0], ee_Maa[1], imp_->cm_acc[0];
-
-		//Jacobian.setZero();
-
-		//for (int i = 1; i < 3; ++i) {
-		//	imp_->m_->motionPool().at(i).setMa(test1[i-1]);
-		//}
-		//forward_kinematic_solver.dynAccAndFce();
-		//cptModelCm();
-		//ee.getMaa(ee_Maa);
-		//Jacobian.block(0, 0, 3, 1) << (ee_Maa[0] - Cf(0, 0)), (ee_Maa[1] - Cf(1, 0)), (imp_->cm_acc[0] - Cf(2, 0));
-		////std::cout << std::endl;
-		////std::cout << "Jacobian2: " << Jacobian << std::endl;
-
-
-		//////imp_->m_->motionPool().at(0).setMa(imp_->stateVar[9]);
-		//for (int i = 1; i < 3; ++i) {
-		//	imp_->m_->motionPool().at(i).setMa(test2[i-1]);
-		//}
-		//forward_kinematic_solver.dynAccAndFce();
-		//cptModelCm();
-		//ee.getMaa(ee_Maa);
-		//Jacobian.block(0, 1, 3, 1) << (ee_Maa[0] - Cf(0, 0)), (ee_Maa[1] - Cf(1, 0)), (imp_->cm_acc[0] - Cf(2, 0));
-		////std::cout << std::endl;
-		////std::cout << "Jacobian2: " << Jacobian << std::endl;
-
-		////for (int i = 0; i < 3; ++i) {
-		////	imp_->m_->motionPool().at(i).setMa(test3[i]);
-		////}
-		////forward_kinematic_solver.dynAccAndFce();
-		////cptModelCm();
-		////ee.getMaa(ee_Maa);
-		////Jacobian.block(0, 2, 3, 1) << (ee_Maa[0] - Cf(0, 0)), (ee_Maa[1] - Cf(1, 0)), (imp_->cm_acc[0] - Cf(2, 0));
-		////std::cout << "Jacobian: " << Jacobian << std::endl;
-
-
-		//Eigen::VectorXd test_acc(3);
-		//test_acc = Jacobian * Qdd + Cf;
-
-		//std::cout << "Cf:" << Cf << std::endl;
-		//std::cout << "Jacobian: " << Jacobian << std::endl;
-		//std::cout << "test Acc: " << test_acc(0, 0) << " " << test_acc(1, 0) << " " << test_acc(2, 0) << " " << std::endl;
-		//std::cout << "before Acc: " << imp_->stateVar[6] << " " << imp_->stateVar[7] << " " << cxa << " " << std::endl;
-
-
-		////////////////////////////////////////////////////////////////// COM Velocity test ///////////////////////////////////////////////////////////////////////////
-		/*cptModelCm();
-		double com_x_vel = imp_->cm_vel[0];
-
-		double test0[3]{ 0, 0, 0 };
-		double test1[3]{ 1, 0, 0 };
-		double test2[3]{ 0, 1, 0 };
-		double test3[3]{ 0, 0, 1 };
-
-		Eigen::MatrixXd Mv(3, 1);
-		Mv << imp_->stateVar[3], imp_->stateVar[4], imp_->stateVar[5];
-
-		Eigen::MatrixXd HV(1, 3);
-
-		for (int i = 0; i < 3; ++i) {
-			imp_->m_->motionPool().at(i).setMv(test1[i]);
-		}
-		imp_->m_->solverPool().at(1).kinVel();
-		cptModelCm();
-		HV(0, 0) = imp_->cm_vel[0];
-
-		for (int i = 0; i < 3; ++i) {
-			imp_->m_->motionPool().at(i).setMv(test2[i]);
-		}
-		imp_->m_->solverPool().at(1).kinVel();
-		cptModelCm();
-		HV(0, 1) = imp_->cm_vel[0];
-
-		for (int i = 0; i < 3; ++i) {
-			imp_->m_->motionPool().at(i).setMv(test3[i]);
-		}
-		imp_->m_->solverPool().at(1).kinVel();
-		cptModelCm();
-		HV(0, 2) = imp_->cm_vel[0];
-
-		auto cx_vel = HV * Mv;
-
-		std::cout << " Hv : " << HV << std::endl;
-
-		std::cout << " com x velocity: " << com_x_vel << " ?= " << cx_vel(0, 0) << " ?= " << (cx_vel(0,0) / com_x_vel) << std::endl;*/
-
-
-
-
-		//double joint_velocity[3][6] = { {0, 0, 0, 0, 0, imp_->stateVar[3]},
-		//								{0, 0, 0, 0, 0, imp_->stateVar[4]},
-		//								{0, 0, 0, 0, 0, imp_->stateVar[5]}
-		//};
-		//
-		//double x1[3], x2[3], x3[3];
-
-		//imp_->m_->jointPool().at(0).makI()->getPp(x1);
-		////std::cout << " x1 : " << x1[0] << " " << x1[1] << " " << x1[2] << " " << std::endl;
-
-		//imp_->m_->jointPool().at(1).makI()->getPp(x2);
-		////std::cout << " x2 : " << x2[0] << " " << x2[1] << " " << x2[2] << " " << std::endl;
-
-		//imp_->m_->jointPool().at(2).makI()->getPp(x3);
-		////std::cout << " x3 : " << x3[0] << " " << x3[1] << " " << x3[2] << " " << std::endl;
-
-		//double cx1[3], cx2[3], cx3[3];
-		//for (int i = 0; i < 3; ++i) {
-		//	cx1[i] = x1[i] - imp_->cm_pos[i];
-		//	cx2[i] = x2[i] - imp_->cm_pos[i];
-		//	cx3[i] = x3[i] - imp_->cm_pos[i];
-		//}
-
-		//double vx1[3], vx2[3], vx3[3];
-		//s_vs2vp(joint_velocity[0], cx1, vx1);
-		//s_vs2vp(joint_velocity[1], cx2, vx2);
-		//s_vs2vp(joint_velocity[2], cx3, vx3);
-		//
-		////double cx_vel = vx1[0] + vx2[0] + vx3[0];
-
-		//std::cout << " joint velocity: " << imp_->stateVar[3] << " " << imp_->stateVar[4] << " " << imp_->stateVar[5] << " " << std::endl;
-		//std::cout << " Com distance 1: " << cx1[0] << " " << cx1[1] << " " << cx1[2] << " " << std::endl;
-		//std::cout << " Com distance 2: " << cx2[0] << " " << cx2[1] << " " << cx2[2] << " " << std::endl;
-		//std::cout << " Com distance 3: " << cx3[0] << " " << cx3[1] << " " << cx3[2] << " " << std::endl;
-
-
-
-
-		//////////////////////////////////////////////////////////////////// COM Accelerate test1 ///////////////////////////////////////////////////////////////////////////
-
-		//cptModelCm();
-		//double com_x_acc = imp_->cm_acc[0];
-		////double test0[3]{ 0, 0, 0 };
-		////double test1[3]{ 1, 0, 0 };
-		////double test2[3]{ 0, 1, 0 };
-		////double test3[3]{ 0, 0, 1 };
-		//Eigen::VectorXd Ma(3, 1);
-
-		//double ma1 = imp_->stateVar[9];
-		//double ma2 = imp_->stateVar[10];
-		//double ma3 = imp_->stateVar[11];
-		//Ma << ma1, ma2, ma3;
-
-
-		//Eigen::MatrixXd H(1, 3);
-		//Eigen::VectorXd b(1);
-		//
-		//
-		//imp_->m_->motionPool().at(0).setMa(0.0);
-		//imp_->m_->generialMotion
-
-		//imp_->m_->solverPool().at(1).dynAccAndFce();
-		//cptModelCm();
-		//b(0) = imp_->cm_acc[0];
-
-		//for (int i = 0; i < 3; ++i) {
-		//	imp_->m_->motionPool().at(i).setMa(test1[i]);
-		//}
-		//imp_->m_->solverPool().at(1).dynAccAndFce();
-		//cptModelCm();
-		//H(0, 0) = imp_->cm_acc[0];
-
-
-		//for (int i = 0; i < 3; ++i) {
-		//	imp_->m_->motionPool().at(i).setMa(test2[i]);
-		//}
-		//imp_->m_->solverPool().at(1).dynAccAndFce();
-		//cptModelCm();
-		//H(0, 1) = imp_->cm_acc[0];
-
-		//for (int i = 0; i < 3; ++i) {
-		//	imp_->m_->motionPool().at(i).setMa(test3[i]);
-		//}
-		//imp_->m_->solverPool().at(1).dynAccAndFce();
-		//cptModelCm();
-		//H(0, 2) = imp_->cm_acc[0];
-		//auto testXa = H * Ma + b ;
-
-		//std::cout << " Ha: " << H << std::endl;
-		//std::cout << " COM X Accelerate is : " << com_x_acc << " ?=  " << testXa(0,0) << "" << std::endl;
 
 	}
 
@@ -594,8 +389,8 @@ namespace triple {
 	// Because the communication has ONE STEP ERROR, we need to check  whether the calculate Acc is as same as the real Acc. 
 	void Controller::checkrealAcc(int m, int n) {
 
-		Eigen::MatrixXd torq = Eigen::MatrixXd::Zero(n, 1);
 		Eigen::MatrixXd acc = Eigen::MatrixXd::Zero(m, 1);
+		Eigen::MatrixXd torq = Eigen::MatrixXd::Zero(n, 1);
 
 		torq(0, 0) = lastTorque[0];
 		torq(1, 0) = lastTorque[1];
@@ -614,12 +409,7 @@ namespace triple {
 		// size of output torque
 		int opt_size = 2;
 
-		this->estimateState();
-		this->cptdesiredCoMAcc();
-		this->calculateAandB();
 
-		// Because the communication has ONE STEP ERROR, we need to check  whether the calculate Acc is as same as the real Acc. 
-		this->checkrealAcc(ipt_size, opt_size);
 
 		///////////////////////////////// QP ���������� ///////////////////////////////////////////////
 
@@ -760,6 +550,19 @@ namespace triple {
 
 	// send torque
 	auto Controller::sendTorque()->std::vector<double> {
+
+		this->estimateState();
+
+		this->cptModelCm();
+		this->cptModelAngularMoment();
+		this->calculateCoMJacobian();
+
+		this->cptdesiredCoMAcc();
+		this->calculateAandB();
+
+		// Because the communication has ONE STEP ERROR, we need to check  whether the calculate Acc is as same as the real Acc. 
+		this->checkrealAcc(3, 2);
+		
 		this->calculateTorque();
 		imp_->count_++;
 
@@ -769,7 +572,7 @@ namespace triple {
 	// send joint and end-effector accelerations 
 	void Controller::sendDesiredAcc(std::vector<double>& desireddata) {
 
-		std::vector<double> joint_acc(6);
+		std::vector<double> joint_acc;
 
 		auto& force1 = dynamic_cast<aris::dynamic::SingleComponentForce&>(imp_->m_->forcePool().at(0));
 		auto& force2 = dynamic_cast<aris::dynamic::SingleComponentForce&>(imp_->m_->forcePool().at(1));
@@ -783,14 +586,18 @@ namespace triple {
 		// 电机端, 每个关节的加速度；
 		double as[6];
 		imp_->m_->jointPool()[0].makI()->fatherPart().getAs(*imp_->m_->jointPool()[0].makJ(), as);
+		joint_acc.push_back(as[5]);
 
-		joint_acc[0] = as[5];
-		joint_acc[1] = imp_->m_->motionPool()[1].ma();
-		joint_acc[2] = imp_->m_->motionPool()[2].ma();
-
-		joint_acc.insert(joint_acc.begin()+3, imp_->calcdesiredAcc.begin(), imp_->calcdesiredAcc.end());
-		/*std::cout << "desired Acc: " << joint_acc[0] << " " << joint_acc[1] << " " << joint_acc[2] << " "
-			<< joint_acc[3] << " " << joint_acc[4] << " " << joint_acc[5] << " " << std::endl;*/
+		for (auto &m: imp_->m_->motionPool()) {
+			joint_acc.push_back(m.ma());
+		}
+		joint_acc.push_back(imp_->calcdesiredAcc[0]);
+		
+		std::cout << "joint acc " << std::endl;
+		for (auto a : joint_acc) {
+			std::cout << a << " ";
+		}
+		std::cout << std::endl;
 
 		desireddata = joint_acc;
 	}

@@ -71,7 +71,7 @@ auto triple::TripleModel::createModel() -> std::unique_ptr<Model> {
 	auto& joint3 = model->addRevoluteJoint(link3, link2, joint3_position, joint3_axis);
 
 	// 添加驱动 Joint1 为被动关节，不用加motion
-	auto& motion1 = model->addMotion(joint1);
+	//auto& motion1 = model->addMotion(joint1);
 	auto& motion2 = model->addMotion(joint2);
 	auto& motion3 = model->addMotion(joint3);
 
