@@ -13,7 +13,7 @@ install_manifest.txt
 # dir
 .vs/
 out/
-SimulinkCoSimulation/
+#SimulinkCoSimulation/
 
 .vscode/
 build/
