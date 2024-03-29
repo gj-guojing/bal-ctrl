@@ -6,9 +6,8 @@ Zmqmsg is mainly used to sending data and receive data by zmq;
 */
 
 #include "zmqmsg.hpp"
-#include <zmq.hpp>
 #include "statcal_util.hpp"
-
+#include <zmq.hpp>
 
 const char* TERMINATE = "terminate";
 const char* SHUTTINGDOWN = "shutting down";

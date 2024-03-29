@@ -635,7 +635,7 @@ namespace triple {
 								  0, -1,
 		};
 
-		double aris_ci[nCI]{ 100, 100, 100, 100 };
+		double aris_ci[nCI]{ 15, 15, 15, 15 };
 
 		std::vector<double> result(nG), mem(nG * nG * 2 + 8 * (nCE + nCI) + 3 * nG);
 		auto r = aris::dynamic::s_quadprog(nG, nCE, nCI, aris_G, aris_g, aris_CE.data(), aris_ce.data(), aris_CI, aris_ci, result.data(), mem.data());
@@ -824,7 +824,7 @@ namespace triple {
 		g.setZero();
 
 		// torque1, torque2, ddx, ddy, ddcx, ddcy, j1a, j2a, ja3
-		double lambda_9[9]{ 1e-6, 1e-6, 1e-3, 1e-3, 1000, 0.0, 0.0, 0.0, 0.0 };
+		double lambda_9[9]{ 0, 0, 1e-1, 1e-1, 1000, 0.0, 0.0, 0.0, 0.0 };
 
 		for (int i = 0; i < 7; ++i) {
 			square += imp_->A_7x2.block(i, 0, 1, 2).transpose() * lambda_9[i + 2] * imp_->A_7x2.block(i, 0, 1, 2);
@@ -858,7 +858,7 @@ namespace triple {
 								  -joint_CI[2], -joint_CI[3],
 		};
 
-		double aris_ci[nCI]{ 100, 100, 100, 100, joint_ci[0], joint_ci[1], joint_ci[2], joint_ci[3]};
+		double aris_ci[nCI]{ 14, 14, 14, 14, joint_ci[0], joint_ci[1], joint_ci[2], joint_ci[3]};
 
 		std::vector<double> result(nG), mem(nG * nG * 2 + 8 * (nCE + nCI) + 3 * nG);
 		auto r = aris::dynamic::s_quadprog(nG, nCE, nCI, aris_G, aris_g, aris_CE.data(), aris_ce.data(), aris_CI, aris_ci, result.data(), mem.data());

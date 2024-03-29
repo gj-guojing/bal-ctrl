@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 	//std::vector<double> targetxy{ 0.16, 1.0 };
 	//std::vector<double> weightxy{ 5, 10, 2, 8 };
 
-	std::vector<double> targetxy{ -0.04, 0.52 };
+	std::vector<double> targetxy{ 0.01, 0.725 };
 	std::vector<double> weightxy{ 5, 10, 2, 8 };
 	triple::fixedPlan fixedPointPlan(targetxy, weightxy);
 
