@@ -23,6 +23,7 @@ void openFile() {
 
 }
 
+// 
 void saveDataTofile(std::vector<double>& data, const std::string& dataName, bool closeFlag ) {
 	static unsigned int iteration = 1;
 	

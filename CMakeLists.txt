@@ -15,7 +15,7 @@ set(LIB_PATH ${PROJECT_BINARY_DIR})
 set(HEAD_PATH ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 ## set lib name
-set(LIB_NAME src)
+set(LIB_NAME balctrl)
 
 ## set exe name
 set(EXE_NAME demo)

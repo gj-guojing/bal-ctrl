@@ -19,7 +19,7 @@ namespace triple {
 	public:
 		void init(Model* model);
 		void getStateVar(std::vector<double>& data, std::vector<double>& acc);
-		void setQPparameters(double* lambda_data, int lambda_size);
+		void setQPparameters(std::vector<double>& lambda_data);
 		void estimateState();
 		void cptModelCm();
 		void cptModelAngularMoment();
@@ -27,6 +27,7 @@ namespace triple {
 		void calculateAandB();
 		void cptdesiredCoMAcc();
 		void calculateTorque();
+		void arisCalcuTorque();
 		auto getlastRealAcc() -> double* { return lastrealAcc.data(); };
 		void sendDesiredAcc(std::vector<double>& desireddata);
 		auto sendTorque() -> std::vector<double>;
@@ -35,6 +36,9 @@ namespace triple {
 		void checkrealAcc(int m, int n);
 		void calcuForwardKinematics(std::vector<double>& data);
 		void dspComputingInformation(int period = 100);
+		void cptdesired7Acc();
+		void osqpMatrix7x2test();
+		void arisMatrix7x2test();
 
 		Controller(const Controller& other);
 		explicit Controller(int outputSize = 2, int intputSize = 3);

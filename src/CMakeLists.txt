@@ -2,8 +2,6 @@
 # 并包含子项目。
 cmake_minimum_required (VERSION 3.12)
 
-project (bal_ctrl_lib)
-
 ## aris use c++ 17 standard
 set(CMAKE_CXX_STANDARD 17)
 
@@ -45,7 +43,6 @@ include_directories(${aris_INCLUDE_DIRS})
 include_directories(${Eigen3_INCLUDE_DIRS})
 include_directories(${osqp_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/demo)
 
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "/*.cpp")
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "${HEAD_PATH}/*.hpp" "${HEAD_PATH}/*.h") 
@@ -106,14 +103,14 @@ IF(WIN32)
             $<TARGET_FILE_DIR:${LIB_NAME}>)                 # <--this is out-file path
 
     add_custom_command(TARGET ${LIB_NAME} POST_BUILD        # Adds a post-build event to MyTest
-        COMMAND ${CMAKE_COMMAND} -E copy  # which executes "cmake - E copy_if_different..."
-            "${ZMQ_LIB}/lib/libzmq-v142-mt-4_3_4.dll"    # <--this is in-file
+        COMMAND ${CMAKE_COMMAND} -E copy                    # which executes "cmake - E copy_if_different..."
+            "${ZMQ_LIB}/lib/libzmq-v142-mt-4_3_4.dll"       # <--this is in-file
             "${ZMQ_LIB}/lib/libsodium.dll" 
             $<TARGET_FILE_DIR:${LIB_NAME}>)                 # <--this is out-file path
 
     add_custom_command(TARGET ${LIB_NAME} POST_BUILD        # Adds a post-build event to MyTest
-        COMMAND ${CMAKE_COMMAND} -E copy  # which executes "cmake - E copy_if_different..."
-            "${osqp_DIR}/../../../bin/osqp.dll"        # <--this is in-file   #Different versions of osqp have different names and this is an error prone area
+        COMMAND ${CMAKE_COMMAND} -E copy                    # which executes "cmake - E copy_if_different..."
+            "${osqp_DIR}/../../../bin/osqp.dll"             # <--this is in-file   #Different versions of osqp have different names and this is an error prone area
             $<TARGET_FILE_DIR:${LIB_NAME}>)                 # <--this is out-file path
 endif(WIN32)
 
