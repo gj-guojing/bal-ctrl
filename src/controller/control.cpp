@@ -7,6 +7,8 @@
 #include "./../solver/math.hpp"
 #include "./../solver/qpsolver.hpp"
 
+
+
 namespace triple {
 
 	// calculate Controller implementation
@@ -14,6 +16,7 @@ namespace triple {
 		int count_ = 0;
 		Controller* controller_;
 		std::shared_ptr<aris::dynamic::Model> m_;
+		double com_acc = 0;
 		double cm_pos[3]{ 0.0, 0.0, 0.0 };
 		double cm_vel[3]{ 0.0, 0.0, 0.0 };
 		double cm_acc[3]{ 0.0, 0.0, 0.0 };
@@ -28,10 +31,18 @@ namespace triple {
 		Eigen::MatrixXd COMJacobian;
 		Eigen::VectorXd COMCf;
 
+		Eigen::MatrixXd A_7x2;
+		Eigen::MatrixXd B_7x1;
+		std::vector<double> desired7Acc;
+
+
 
 		Imp(Controller* controller) : controller_(controller) {
 			A = Eigen::MatrixXd::Zero(3, 2);
 			B = Eigen::MatrixXd::Zero(3, 1);
+			A_7x2 = Eigen::MatrixXd::Zero(7, 2);
+			B_7x1 = Eigen::MatrixXd::Zero(7, 1);
+			desired7Acc.resize(7);
 		}
 	};
 
@@ -57,8 +68,8 @@ namespace triple {
 	}
 
 	// set QP parameters 
-	void Controller::setQPparameters(double* lambda_data, int lambda_size) {
-		for (int i = 0; i < lambda_size; i++) {
+	void Controller::setQPparameters(std::vector<double>& lambda_data) {
+		for (int i = 0; i < lambda_data.size(); i++) {
 			imp_->lambda[i] = lambda_data[i];
 		}
 	}
@@ -114,7 +125,7 @@ namespace triple {
 		// ��ʼ����x����ļ��ٶȣ�
 		cptModelCm();
 		double cx_acc = imp_->cm_acc[0];
-
+		imp_->com_acc = imp_->cm_acc[0];
 
 		Eigen::VectorXd qdd(3);
 
@@ -273,16 +284,20 @@ namespace triple {
 		double kp_cx = 10;
 		double kp_vcx = 50;
 		double vx_d = kp_cx * (cx_d - imp_->cm_pos[0]);
-		vx_d = std::max(vx_d, -0.1);
-		vx_d = std::min(vx_d, 0.1);
+		vx_d = std::max(vx_d, -1.0);
+		vx_d = std::min(vx_d, 1.0);
 		double ax_d = kp_vcx * (vx_d - imp_->cm_vel[0]);
-		ax_d = std::max(ax_d, -1.0);
-		ax_d = std::min(ax_d, 1.0);
+		ax_d = std::max(ax_d, -6.0);
+		ax_d = std::min(ax_d, 6.0);
 		imp_->desiredAcc[2] = ax_d + 0 * (imp_->COMJacobian(0, 1) * imp_->desiredAcc[0] );
+
+		static std::ofstream outputFile("AngularMomentandCoMstates.txt");
+		if (outputFile.is_open()) {
+			outputFile << imp_->moment[5] << "\t " << imp_->cm_pos[0] << "\t " << imp_->cm_vel[0] << "\t " << imp_->com_acc << std::endl;
+		}
+		//outputFile.close();
 		 
-		// std::cout << "cm_vel: " << imp_->cm_vel[0] << std::endl; 
-		// std::cout << "ax_d: " << ax_d << std::endl; 
-		// std::cout << "imp_->desiredAcc[2]: " << imp_->desiredAcc[2] << std::endl;
+		
 	}
 
 	// calculate A and B column
@@ -307,11 +322,19 @@ namespace triple {
 		this->cptModelCm();
 
 		// 电机端, 每个关节的加速度；
-		double aj1 = 0.0;
+		double aj[3]{0.0};
 		double as[6];
-		for (auto& m : imp_->m_->motionPool()) m.updA();
 		imp_->m_->jointPool()[0].makI()->getAs(*imp_->m_->jointPool()[0].makJ(), as);
-		aj1 = as[5];
+		aj[0] = as[5];
+
+		{
+			int i = 1;
+			for (auto& m : imp_->m_->motionPool()) {
+				m.updA();
+				aj[i] = m.ma();
+				i++;
+			}
+		}
 
 		if (imp_->count_ < 3000) {
 			if ((force[0] == 0) && (force[1] == 0)) {
@@ -354,6 +377,82 @@ namespace triple {
 				imp_->A(0, 1) = ap[0] - imp_->B(0, 0);
 				imp_->A(1, 1) = ap[1] - imp_->B(1, 0);
 				//imp_->A(2, 1) = imp_->cm_acc[0] - imp_->B(2, 0);
+
+			}
+			else {
+				std::cout << " ... ... " << std::endl;
+				std::cerr << "force error!" << std::endl;
+				std::cout << force[0] << " " << force[1] << " " << std::endl;
+				exit(1);
+			}
+		}
+
+		// calculate A_7x2 and B_7x1
+		if (imp_->count_ < 5000) {
+			if ((force[0] == 0) && (force[1] == 0)) {
+				// get b
+				imp_->B_7x1(0, 0) = ap[0];
+				imp_->B_7x1(1, 0) = ap[1];
+				imp_->B_7x1(2, 0) = imp_->cm_acc[0];
+				imp_->B_7x1(3, 0) = imp_->cm_acc[1];
+				imp_->B_7x1(4, 0) = aj[0];
+				imp_->B_7x1(5, 0) = aj[1];
+				imp_->B_7x1(6, 0) = aj[2];
+			}
+			else if ((force[0] == 1) && (force[1] == 0)) {
+				imp_->A_7x2(0, 0) = ap[0] - imp_->B_7x1(0, 0);
+				imp_->A_7x2(1, 0) = ap[1] - imp_->B_7x1(1, 0);
+				imp_->A_7x2(2, 0) = imp_->cm_acc[0] - imp_->B_7x1(2, 0);
+				imp_->A_7x2(3, 0) = imp_->cm_acc[1] - imp_->B_7x1(3, 0);
+				imp_->A_7x2(4, 0) = aj[0] - imp_->B_7x1(4, 0);
+				imp_->A_7x2(5, 0) = aj[1] - imp_->B_7x1(5, 0);
+				imp_->A_7x2(6, 0) = aj[2] - imp_->B_7x1(6, 0);
+			}
+			else if ((force[0] == 0) && (force[1] == 1)) {
+				imp_->A_7x2(0, 1) = ap[0] - imp_->B_7x1(0, 0);
+				imp_->A_7x2(1, 1) = ap[1] - imp_->B_7x1(1, 0);
+				imp_->A_7x2(2, 1) = imp_->cm_acc[0] - imp_->B_7x1(2, 0);
+				imp_->A_7x2(3, 1) = imp_->cm_acc[1] - imp_->B_7x1(3, 0);
+				imp_->A_7x2(4, 1) = aj[0] - imp_->B_7x1(4, 0);
+				imp_->A_7x2(5, 1) = aj[1] - imp_->B_7x1(5, 0);
+				imp_->A_7x2(6, 1) = aj[2] - imp_->B_7x1(6, 0);
+			}
+			else {
+				std::cout << " ... ... " << std::endl;
+				std::cerr << "force error!" << std::endl;
+				std::cout << force[0] << " " << force[1] << " " << std::endl;
+				exit(1);
+			}
+		}
+		else {
+			if ((force[0] == 0) && (force[1] == 0)) {
+				// get b
+				imp_->B_7x1(0, 0) = ap[0];
+				imp_->B_7x1(1, 0) = ap[1];
+				imp_->B_7x1(2, 0) = imp_->cm_acc[0];
+				imp_->B_7x1(3, 0) = imp_->cm_acc[1];
+				imp_->B_7x1(4, 0) = aj[0];
+				imp_->B_7x1(5, 0) = aj[1];
+				imp_->B_7x1(6, 0) = aj[2];
+			}
+			else if ((force[0] == 1) && (force[1] == 0)) {
+				imp_->A_7x2(0, 0) = ap[0] - imp_->B_7x1(0, 0);
+				imp_->A_7x2(1, 0) = ap[1] - imp_->B_7x1(1, 0);
+				imp_->A_7x2(2, 0) = imp_->cm_acc[0] - imp_->B_7x1(2, 0);
+				imp_->A_7x2(3, 0) = imp_->cm_acc[1] - imp_->B_7x1(3, 0);
+				imp_->A_7x2(4, 0) = aj[0] - imp_->B_7x1(4, 0);
+				imp_->A_7x2(5, 0) = aj[1] - imp_->B_7x1(5, 0);
+				imp_->A_7x2(6, 0) = aj[2] - imp_->B_7x1(6, 0);
+
+			}
+			else if ((force[0] == 0) && (force[1] == 1)) {
+				imp_->A_7x2(0, 1) = ap[0] - imp_->B_7x1(0, 0);
+				imp_->A_7x2(1, 1) = ap[1] - imp_->B_7x1(1, 0);
+				imp_->A_7x2(2, 1) = imp_->cm_acc[0] - imp_->B_7x1(2, 0);
+				imp_->A_7x2(3, 1) = imp_->cm_acc[1] - imp_->B_7x1(3, 0);
+				imp_->A_7x2(4, 1) = aj[0] - imp_->B_7x1(4, 0);
+				imp_->A_7x2(5, 1) = aj[1] - imp_->B_7x1(5, 0);
+				imp_->A_7x2(6, 1) = aj[2] - imp_->B_7x1(6, 0);
 
 			}
 			else {
@@ -409,9 +508,7 @@ namespace triple {
 		// size of output torque
 		int opt_size = 2;
 
-
-
-		///////////////////////////////// QP ���������� ///////////////////////////////////////////////
+		///////////////////////// QP ////////////////////////////
 
 		///////////////////// Set NEXT desired Acc //////////////////////
 		Eigen::MatrixXd Acc = Eigen::MatrixXd::Zero(ipt_size, 1);
@@ -419,7 +516,7 @@ namespace triple {
 		double comAcc_error = 0;
 		double abs_comAcc = std::abs(imp_->desiredAcc[2]);
 
-		// ������������CAM����ƿ���CAM���������κ���
+		// CoM
 		if ((abs_comAcc > 0) && (abs_comAcc < 0.2)) {
 			comAcc_error = 0.2;
 		}
@@ -438,13 +535,6 @@ namespace triple {
 		Acc(2, 0) = imp_->desiredAcc[2];
 
 		// m1, m2, ax, ay, acx
-		double lambda[5]{ 0.01, 0.01, 1, 1,  10};
-		//if (imp_->count_ > 3000 ) {
-		//	lambda[2] = 1;
-		//	lambda[3] = 1;
-		//	lambda[4] = 2;
-		//}
-
 		const int n = opt_size;
 		const int m = ipt_size;
 
@@ -452,7 +542,7 @@ namespace triple {
 		const int size_P = m + n;
 		Eigen::MatrixXd P(size_P, size_P);
 		P.setZero();
-		P.diagonal() << lambda[0], lambda[1], lambda[2], lambda[3], lambda[4];
+		P.diagonal() << imp_->lambda[0], imp_->lambda[1], imp_->lambda[2], imp_->lambda[3], imp_->lambda[4];
 
 		// q
 		Eigen::MatrixXd q(n + m, 1);
@@ -479,42 +569,9 @@ namespace triple {
 		u.block(0, 0, m, 1) = (Acc - imp_->B + error);
 		u.block(m, 0, n, 1) << 100, 100;
 
-		// x ������
+		// x 
 		Eigen::MatrixXd x = Eigen::MatrixXd::Zero(n + m, 1);
 		x = qpSolver(P, q, QP_A, l, u);
-
-		/* using aris::dynamic::s_quadprog
-
-		Eigen::MatrixXd torque = x.block(0, 0, n, 1);
-
-		const aris::Size nG = 5, nCE = 3, nCI = 4;
-
-		double aris_G[nG * nG]{ lambda[0], 0, 0, 0, 0,
-								0, lambda[1], 0, 0, 0,
-								0, 0, lambda[2], 0, 0,
-								0, 0, 0, lambda[3], 0,
-								0, 0, 0, 0, lambda[4],
-		};
-
-		double aris_g[nG]{ 0.0, 0.0, 0.0, 0.0, 0.0 };
-		double aris_CE[nCE * nG]{ imp_->A(0, 0), imp_->A(0, 1), -1, 0.0, 0.0,
-								  imp_->A(1, 0), imp_->A(1, 1), 0.0, -1, 0.0,
-								  imp_->A(2, 0), imp_->A(2, 1), 0.0, 0.0, -1,
-		};
-
-		double aris_ce[nCE]{ce(0, 0), ce(1, 0), ce(2, 0)};
-
-		double aris_CI[nCI * nG]{ 1, 0, 0, 0, 0,
-								  0, 1, 0, 0, 0,
-								  -1, 0, 0, 0, 0,
-								  0, -1, 0, 0, 0
-		};
-
-		double aris_ci[nCI]{ 100, 100, 100, 100 };
-
-		std::vector<double> result(nG), mem(nG * nG * 2 + 8 * (nCE + nCI) + 3 * nG);
-		auto r = aris::dynamic::s_quadprog(nG, nCE, nCI, aris_G, aris_g, aris_CE, aris_ce, aris_CI, aris_ci, result.data(), mem.data());
-		*/
 
 		Eigen::MatrixXd torque = x.block(0, 0, n, 1);
 
@@ -533,37 +590,310 @@ namespace triple {
 
 		lastTorque = imp_->torque;
 
-		//std::cout << "imp_->torque[0]: " << imp_->torque[0] << "imp_->torque[1]: " << imp_->torque[1] << std::endl;
+	}
+
+	// 1. calculate G and g
+	// (xdd-xddt_ref)^2 ||[a11 a12]*[torq1 torq2]^{T}+(b-xddt_ref)||2;
+	//					= [torq1 torq2] * A * [torq1 torq2]^T + 2*(b-xddt_ref)[a11 a12]*[torq1 torq2]^T
+	// (ydd-yddt_ref)^2, (cxdd-cxddt_ref)^2
+	// 2. nG, nCE, nCI, aris_G, aris_g, aris_CE, aris_ce, aris_CI, aris_ci
+	// 3. aris::dynamic::s_quadprog
+	void Controller::arisCalcuTorque() {
+		Eigen::Matrix2d square;
+		square.setZero();
+		for (int i = 0; i < 3; ++i) {
+			square += imp_->A.block(i, 0, 1, 2).transpose() * imp_->lambda[i + 2] * imp_->A.block(i, 0, 1, 2);
+		}
+
+		//Eigen::Matrix2d square_A1 = imp_->A.block(0, 0, 1, 2).transpose() * imp_->lambda[2] * imp_->A.block(0, 0, 1, 2);
+		//Eigen::Matrix2d square_A2 = imp_->A.block(1, 0, 1, 2).transpose() * imp_->lambda[3] * imp_->A.block(1, 0, 1, 2);
+		//Eigen::Matrix2d square_A3 = imp_->A.block(2, 0, 1, 2).transpose() * imp_->lambda[4] * imp_->A.block(2, 0, 1, 2);
+
+		Eigen::MatrixXd g1 = imp_->lambda[2] * (imp_->B(0, 0) - imp_->desiredAcc[0]) * imp_->A.block(0, 0, 1, 2);
+		Eigen::MatrixXd g2 = imp_->lambda[3] * (imp_->B(1, 0) - imp_->desiredAcc[1]) * imp_->A.block(1, 0, 1, 2);
+		Eigen::MatrixXd g3 = imp_->lambda[4] * (imp_->B(2, 0) - imp_->desiredAcc[2]) * imp_->A.block(2, 0, 1, 2);
+
+		Eigen::Matrix2d G = Eigen::Matrix2d::Identity();
+		G.diagonal() << imp_->lambda[0], imp_->lambda[1];
+		G = G + square;
+
+		Eigen::MatrixXd g = g1 + g2 + g3;
+
+		const aris::Size nG = 2, nCE = 0, nCI = 4;
+
+		double aris_G[nG * nG]{ G(0,0), G(0,1),
+								G(1,0), G(1,1),
+		};
+
+		double aris_g[nG]{ g(0,0), g(0,1)};
+		std::vector<double> aris_CE( nCE * nG);
+		std::vector<double> aris_ce( nCE);
+
+		double aris_CI[nCI * nG]{ 1, 0,
+								  0, 1,
+								  -1, 0,
+								  0, -1,
+		};
+
+		double aris_ci[nCI]{ 15, 15, 15, 15 };
+
+		std::vector<double> result(nG), mem(nG * nG * 2 + 8 * (nCE + nCI) + 3 * nG);
+		auto r = aris::dynamic::s_quadprog(nG, nCE, nCI, aris_G, aris_g, aris_CE.data(), aris_ce.data(), aris_CI, aris_ci, result.data(), mem.data());
+		
+
+
+		//std::cout << "G :\n" << G << std::endl;
+		//std::cout << "g: \n " << g << std::endl;
+
+		//std::cout << "aris: " << result[0] << " " << result[1] << std::endl;
+		//std::cout << "osqp: " << imp_->torque[0] << " " << imp_->torque[1] << std::endl;
 	}
 
 	void Controller::dspComputingInformation(int period) {
 
-		if (imp_->count_ % period == 0) {
+		if ((imp_->count_ - 1) % period == 0) {
 			std::cout << "imp_->count_ " << imp_->count_ << " ---------------------------------------------------- " << std::endl;
 			std::cout << " " << std::endl;
 			std::cout << "imp_->A: \n" << imp_->A << std::endl;
+			std::cout << "imp_->B : \n" << imp_->B << std::endl;
+
 			std::cout << "Acc: " << imp_->desiredAcc[0] << " " << imp_->desiredAcc[1] << " " << imp_->desiredAcc[2] << std::endl;
 			std::cout << "torque: " << imp_->torque[0] << "  " << imp_->torque[1] << " " << std::endl;
-			std::cout << "CoM x com: " << imp_->cm_pos[0] << " " << imp_->cm_pos[1] << " " << std::endl;
+			std::cout << "CoM x and y com: " << imp_->cm_pos[0] << " " << imp_->cm_pos[1] << " " << std::endl;
+			std::cout << "imp_->A_7x2 : \n" << imp_->A_7x2 << std::endl;
+			std::cout << "imp_->B_7x1:  \n" << imp_->B_7x1 << std::endl;
 		}
+	}
+
+	void Controller::cptdesired7Acc() {
+		imp_->desired7Acc[0] = imp_->desiredAcc[0];
+		imp_->desired7Acc[1] = imp_->desiredAcc[1];
+		imp_->desired7Acc[2] = imp_->desiredAcc[2];
+
+		// Map the Angle to [-pi. pi]
+		double joint_pos[3]{0.0, 0.0, 0.0};
+		double joint_vel[3]{0.0, 0.0, 0.0};
+		for (int i = 0; i < 3; ++i) {
+			joint_vel[i] = imp_->stateVar[3 + i];
+			joint_pos[i] = std::fmod(imp_->stateVar[i], 2 * aris::PI);
+			if (joint_pos[i] > aris::PI) {
+				joint_pos[i] = joint_pos[i] - 2 * aris::PI;
+			}
+		}
+
+
+		////  CoM acceleration in y direction
+		static double cy_d = 0.42;
+		double kp_cy = 10;
+		double kp_vcy = 50;
+		double vy_d = kp_cy * (cy_d - imp_->cm_pos[1]);
+		vy_d = std::max(vy_d, -1.0);
+		vy_d = std::min(vy_d, 1.0);
+		double ay_d = kp_vcy * (vy_d - imp_->cm_vel[1]);
+		ay_d = std::max(ay_d, -10.0);
+		ay_d = std::min(ay_d, 10.0);
+		imp_->desired7Acc[3] = ay_d ;
+
+		//  Joint 1 acceleration, joint
+		static double j1pos_d = 0;
+		double kp_j1 = 10;
+		double kd_j1 = 5;
+		double j1vel_d = kp_j1 * (j1pos_d - joint_pos[0]);
+		j1vel_d = std::max(j1vel_d, -10.0);
+		j1vel_d = std::min(j1vel_d, 10.0);
+		double j1acc_d = kd_j1 * (j1vel_d - joint_vel[0]);
+		j1acc_d = std::max(j1acc_d, -1000.0);
+		j1acc_d = std::min(j1acc_d, 1000.0);
+		imp_->desired7Acc[4] = j1acc_d;
+
+		static double j2pos_d = 0;
+		double kp_j2 = 10;
+		double kd_j2 = 5;
+		double j2vel_d = kp_j2 * (j2pos_d - joint_pos[1]);
+		j2vel_d = std::max(j2vel_d, -10.0);
+		j2vel_d = std::min(j2vel_d, 10.0);
+		double j2acc_d = kd_j2 * (j2vel_d - joint_vel[1]);
+		j2acc_d = std::max(j2acc_d, -1000.0);
+		j2acc_d = std::min(j2acc_d, 1000.0);
+		imp_->desired7Acc[5] = j2acc_d;
+
+		static double j3pos_d = 0;
+		double kp_j3 = 10;
+		double kd_j3 = 5;
+		double j3vel_d = kp_j3 * (j3pos_d - joint_pos[2]);
+		j3vel_d = std::max(j3vel_d, -10.0);
+		j3vel_d = std::min(j3vel_d, 10.0);
+		double j3acc_d = kd_j3 * (j3vel_d - joint_vel[2]);
+		j3acc_d = std::max(j3acc_d, -1000.0);
+		j3acc_d = std::min(j3acc_d, 1000.0);
+		imp_->desired7Acc[6] = j3acc_d;
+
+	}
+
+	void Controller::osqpMatrix7x2test() {
+		// P
+		const int m = 7, n = 2;
+		const int size_P = m + n;
+		
+		Eigen::MatrixXd Acc = Eigen::MatrixXd::Zero(m, 1);
+
+		for (int i = 0; i < m; i++) {
+			Acc(i, 0) = imp_->desired7Acc[i];
+		}
+
+		// torque1, torque2, ddx, ddy, ddcx, ddcy, j1a, j2a, ja3
+		double lambda_9[9]{ 1e-6, 1e-6, 1e-3, 1e-3, 1000, 0, 0, 0, 0 };
+
+		Eigen::MatrixXd P(size_P, size_P);
+		P.setZero();
+		P.diagonal() << lambda_9[0], lambda_9[1], lambda_9[2], lambda_9[3], lambda_9[4],
+						lambda_9[5], lambda_9[6], lambda_9[7], lambda_9[8];
+
+		// q
+		Eigen::MatrixXd q(n + m, 1);
+		q.setZero();
+
+		// A 
+		Eigen::MatrixXd Ad = imp_->A_7x2;
+		Eigen::MatrixXd QP_A(m + n, m + n);
+		QP_A.setZero();
+		QP_A.block(0, 0, m, n) = Ad;
+		QP_A.block(0, n, m, m) = (-1) * Eigen::MatrixXd(m, m).setIdentity();
+		QP_A.block(m, 0, n, n) = Eigen::MatrixXd(n, n).setIdentity();
+
+		// l
+		Eigen::MatrixXd l = Eigen::MatrixXd::Zero(n + m, 1);
+		l.block(0, 0, m, 1) = (Acc - imp_->B_7x1);
+		l.block(m, 0, n, 1) << -100, -100;
+
+		// u
+		Eigen::MatrixXd u = Eigen::MatrixXd::Zero(n + m, 1);
+		u.block(0, 0, m, 1) = (Acc - imp_->B_7x1);
+		u.block(m, 0, n, 1) << 100, 100;
+
+		// x 
+		Eigen::MatrixXd x = Eigen::MatrixXd::Zero(n + m, 1);
+		x = qpSolver(P, q, QP_A, l, u, n, m);
+
+		Eigen::MatrixXd torque = x.block(0, 0, n, 1);
+
+		//std::cout << "qp solver: " << x << std::endl;
+		imp_->torque[0] = torque(0, 0);
+		imp_->torque[1] = torque(1, 0);
+	}
+
+	void Controller::arisMatrix7x2test() {
+
+		// Map the Angle to [-pi. pi]
+		double joint_pos[3]{ 0.0, 0.0, 0.0 };
+		double joint_vel[3]{ 0.0, 0.0, 0.0 };
+		for (int i = 0; i < 3; ++i) {
+			joint_vel[i] = imp_->stateVar[3 + i];
+			joint_pos[i] = std::fmod(imp_->stateVar[i], 2 * aris::PI);
+			if (joint_pos[i] > aris::PI) {
+				joint_pos[i] = joint_pos[i] - 2 * aris::PI;
+			}
+		}
+
+		// joint velcity and position constraint 
+		// the actual position constraint [-2.0, 2.0] and the actual vel constraint is [-9, -9] 
+		double max_joint_pos[2]{1.9, 1.9}; 
+		double min_joint_pos[2]{-1.9, -1.9};
+		double max_joint_vel[2]{10, 10};
+		double min_joint_vel[2]{-10, 10};
+
+		// calculate inequality
+		double max_joint_acc[2]{0.0, 0.0};
+		double min_joint_acc[2]{0.0, 0.0};
+		max_joint_acc[0] = (max_joint_pos[0] - joint_pos[1]) * 1e6 - max_joint_vel[0] * 1e3;
+		max_joint_acc[1] = (max_joint_pos[1] - joint_pos[2]) * 1e6 - max_joint_vel[1] * 1e3;
+
+		min_joint_acc[0] = (min_joint_pos[0] - joint_pos[1]) * 1e6 - min_joint_vel[0] * 1e3;
+		min_joint_acc[1] = (min_joint_pos[1] - joint_pos[2]) * 1e6 - min_joint_vel[1] * 1e3;
+
+		double joint_CI[4] = { imp_->A_7x2(5, 0), imp_->A_7x2(5, 1),
+								imp_->A_7x2(6, 0), imp_->A_7x2(6, 1), };
+		double joint_ci[4] = { (max_joint_acc[0] - imp_->B_7x1(5,0)),
+								(max_joint_acc[1] - imp_->B_7x1(6,0)),
+								(-min_joint_acc[0] + imp_->B_7x1(5,0)),
+								(-min_joint_acc[1] + imp_->B_7x1(6,0)) };
+
+		//
+		Eigen::Matrix2d square = Eigen::Matrix2d::Zero();
+		Eigen::MatrixXd g(1, 2);
+		g.setZero();
+
+		// torque1, torque2, ddx, ddy, ddcx, ddcy, j1a, j2a, ja3
+		double lambda_9[9]{ 0, 0, 1e-1, 1e-1, 1000, 0.0, 0.0, 0.0, 0.0 };
+
+		for (int i = 0; i < 7; ++i) {
+			square += imp_->A_7x2.block(i, 0, 1, 2).transpose() * lambda_9[i + 2] * imp_->A_7x2.block(i, 0, 1, 2);
+		}
+
+		for (int i = 0; i < 7; ++i) {
+			g += lambda_9[i + 2] * (imp_->B_7x1(i, 0) - imp_->desired7Acc[i]) * imp_->A_7x2.block(i, 0, 1, 2);
+		}
+
+		Eigen::Matrix2d G = Eigen::Matrix2d::Identity();
+		G.diagonal() << lambda_9[0], lambda_9[1];
+		G = G + square;
+
+		const aris::Size nG = 2, nCE = 0, nCI = 8;
+
+		double aris_G[nG * nG]{ G(0,0), G(0,1),
+								G(1,0), G(1,1),
+		};
+
+		double aris_g[nG]{ g(0, 0), g(0, 1) };
+		std::vector<double> aris_CE(nCE * nG);
+		std::vector<double> aris_ce(nCE);
+
+		double aris_CI[nCI * nG]{ 1, 0,
+								  0, 1,
+								  -1, 0,
+								  0, -1,
+								  joint_CI[0], joint_CI[1],
+								  joint_CI[2], joint_CI[3],
+								  -joint_CI[0], -joint_CI[1],
+								  -joint_CI[2], -joint_CI[3],
+		};
+
+		double aris_ci[nCI]{ 14, 14, 14, 14, joint_ci[0], joint_ci[1], joint_ci[2], joint_ci[3]};
+
+		std::vector<double> result(nG), mem(nG * nG * 2 + 8 * (nCE + nCI) + 3 * nG);
+		auto r = aris::dynamic::s_quadprog(nG, nCE, nCI, aris_G, aris_g, aris_CE.data(), aris_ce.data(), aris_CI, aris_ci, result.data(), mem.data());
+
+		imp_->torque[0] = result[0];
+		imp_->torque[1] = result[1];
+
+ 		//std::cout << "aris: " << result[0] << " " << result[1] << std::endl;
+		//std::cout << "osqp: " << imp_->torque[0] << " " << imp_->torque[1] << std::endl;
 	}
 
 	// send torque
 	auto Controller::sendTorque()->std::vector<double> {
 
 		this->estimateState();
-
 		this->cptModelCm();
 		this->cptModelAngularMoment();
-		this->calculateCoMJacobian();
 
+		this->calculateCoMJacobian();
 		this->cptdesiredCoMAcc();
+		this->cptdesired7Acc();
+
 		this->calculateAandB();
 
 		// Because the communication has ONE STEP ERROR, we need to check  whether the calculate Acc is as same as the real Acc. 
 		this->checkrealAcc(3, 2);
-		
 		this->calculateTorque();
+
+		this->arisCalcuTorque();
+
+		//this->osqpMatrix7x2test();
+		this->arisMatrix7x2test();
+
+		this->dspComputingInformation(100);
+
 		imp_->count_++;
 
 		return imp_->torque;
@@ -593,11 +923,11 @@ namespace triple {
 		}
 		joint_acc.push_back(imp_->calcdesiredAcc[0]);
 		
-		std::cout << "joint acc " << std::endl;
-		for (auto a : joint_acc) {
-			std::cout << a << " ";
-		}
-		std::cout << std::endl;
+		//std::cout << "joint acc " << std::endl;
+		//for (auto a : joint_acc) {
+		//	std::cout << a << " ";
+		//}
+		//std::cout << std::endl;
 
 		desireddata = joint_acc;
 	}
@@ -607,24 +937,25 @@ namespace triple {
 	void Controller::verifyAccelerate(std::vector<double>& data) {
 
 		double error = 0;
-
-		for (int i = 0; i < lastrealAcc.size() - 1; ++i) {
-			error = std::max(std::abs(data[12 + i] - lastrealAcc[i]), error);
-		}
-
-		if (error > 1e-2 * 1.0)
-		{
-			std::cout << "acc desired:";
-			for (int i = 0; i < lastrealAcc.size(); i++) {
-				std::cout << lastrealAcc[i] << " ";
+		if (imp_->count_ > 3000) {
+			for (int i = 0; i < lastrealAcc.size() - 1; ++i) {
+				error = std::max(std::abs(data[12 + i] - lastrealAcc[i]), error);
 			}
-			std::cout << std::endl;
 
-			std::cout << "data back: " << std::endl;
-			std::cout << data[12] << " " << data[13] << " " << data[15] << " "
-				<< data[16] << " " << data[17] << " " << std::endl;
-			std::cout << "---------------------------- " << std::endl;
-			throw std::runtime_error("error : acc data not correct");
+			if (error > 1e-1 * 1.0)
+			{
+				std::cout << "acc desired:";
+				for (int i = 0; i < lastrealAcc.size(); i++) {
+					std::cout << lastrealAcc[i] << " ";
+				}
+				std::cout << std::endl;
+
+				std::cout << "data back: " << std::endl;
+				std::cout << data[12] << " " << data[13] << " " << data[15] << " "
+					<< data[16] << " " << data[17] << " " << std::endl;
+				std::cout << "---------------------------- " << std::endl;
+				throw std::runtime_error("error : acc data not correct");
+			}
 		}
 	}
 

@@ -90,7 +90,9 @@ auto triple::TripleModel::createModel() -> std::unique_ptr<Model> {
 	auto& forward_dynamic_solver = model->solverPool().add<aris::dynamic::ForwardDynamicSolver>();
 
 	model->init();
-	std::cout << " Successful modeling ! " << std::endl;
+
+	std::cout << "\nSuccessful modeling ! " << std::endl;
+
 	
 	return model;
 }
