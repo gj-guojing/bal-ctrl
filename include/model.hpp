@@ -9,20 +9,18 @@
 namespace triple  {
 
 	using namespace aris::dynamic;
+	
+	auto BAL_CTRL_API createModel() -> std::unique_ptr<Model>;
 
 	class BAL_CTRL_API TripleModel : public aris::dynamic::Model
 	{
 	public:
-		auto createModel() -> std::unique_ptr<Model>;
 		void calcuForwardKinematics(std::vector<double>& data);
-		auto getmodel()->std::shared_ptr<aris::dynamic::Model> { return this->m_; };
-		auto getmodel()const -> const std::shared_ptr<aris::dynamic::Model> { return const_cast<TripleModel*>(this)->m_; };
+		// auto getmodel()->std::shared_ptr<aris::dynamic::Model> { return this->m_; };
+		// auto getmodel()const -> const std::shared_ptr<aris::dynamic::Model> { return const_cast<TripleModel*>(this)->m_; };
 		  
 		TripleModel();
 		~TripleModel();
-		
-	private:
-		std::shared_ptr<aris::dynamic::Model> m_{ nullptr };
 	};
 }
 

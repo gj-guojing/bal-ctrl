@@ -1,6 +1,8 @@
 #ifndef ZMQMSG_H
 #define ZMQMSG_H
 
+#ifdef _WIN32
+
 // 用于使用zmq发送和接收数据
 
 #include <string>
@@ -26,4 +28,5 @@ private:
 	std::unique_ptr<Imp> imp_;
 };
 
+#endif
 #endif

@@ -1,2 +1,2 @@
-# add sub directory
+﻿# add sub directory
 add_subdirectory(demo_triplependulum)

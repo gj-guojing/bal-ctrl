@@ -1,7 +1,7 @@
-/// ×ßx·½ÏòµÄ¹ì¼£
+/// ï¿½ï¿½xï¿½ï¿½ï¿½ï¿½Ä¹ì¼£
 //-------------------------------------------------------------------------------------------------------//
-//Èý¸ö¸Ë¼þ£¬×îºóÒ»¸ùÁ¬¸ËÉÏÓÐÒ»¸öÖÊÁ¿
-//Ä£ÐÍÊ¾Òâ£º
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ë¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//Ä£ï¿½ï¿½Ê¾ï¿½â£º
 //                                    
 //                                      ** (body)
 //                                      /
@@ -31,9 +31,11 @@ const double PI = 3.141592653589793;
 
 int main(int argc, char* argv[])
 {
+	#ifdef _WIN32
+
 
 	triple::TripleModel tripleModel;
-	triple::Controller triplePendulumController(tripleModel.createModel().release());
+	triple::Controller triplePendulumController(triple::createModel().release());
 
 
 	// Initialize plan to get desired accelerate;
@@ -78,40 +80,13 @@ int main(int argc, char* argv[])
 
 		zmqmsg.send_msg(torque);
 
-		// ÑéÖ¤¼ÆËãÊÇ·ñÕýÈ·
+		// ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ï¿½ï¿½È·
 		//triplePendulumController.verifyAccelerate(data);
 		//triplePendulumController.dspComputingInformation(100);
 
 
 	}
-
+#endif
 	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

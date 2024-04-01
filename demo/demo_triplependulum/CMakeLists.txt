@@ -27,6 +27,7 @@ target_link_libraries(${EXE_NAME}
         ${aris_LIBRARIES}
         ${LIB_NAME})
 
+IF(WIN32)
 add_custom_command(TARGET ${EXE_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         "${LIB_PATH}/src/${LIB_NAME}.dll"
@@ -45,3 +46,4 @@ add_custom_command(TARGET ${EXE_NAME} POST_BUILD        # Adds a post-build even
         COMMAND ${CMAKE_COMMAND} -E copy                    # which executes "cmake - E copy_if_different..."
             "${osqp_DIR}/../../../bin/osqp.dll"             # <--this is in-file   #Different versions of osqp have different names and this is an error prone area
             $<TARGET_FILE_DIR:${EXE_NAME}>)                 # <--this is out-file path
+endif(WIN32)

@@ -4,6 +4,7 @@ Zmqmsg is mainly used to sending data and receive data by zmq;
 	There may be some problem where is: there is no len()>0 in get_request() 
 
 */
+#ifdef _WIN32
 
 #include "zmqmsg.hpp"
 #include "statcal_util.hpp"
@@ -82,3 +83,5 @@ Zmqmsg::Zmqmsg(std::string p) : imp_(new Imp(this)) {
 }
 
 Zmqmsg::~Zmqmsg() = default;
+
+#endif

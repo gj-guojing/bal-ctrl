@@ -25,8 +25,54 @@
 const double PI = 3.141592653589793;
 
 //  Create robot model
-auto triple::TripleModel::createModel() -> std::unique_ptr<Model> {
+auto triple::createModel() -> std::unique_ptr<Model> {
+	std::unique_ptr<aris::dynamic::Model> model{new triple::TripleModel};
+	return model;
+}
 
+// calculate forward Kinematics 
+// data : joint1, joint2, joint3, w1, w2, w3, x, y, angle, vx, vy, wz, ax, ay, bz, ja1, ja2, ja3 
+void triple::TripleModel::calcuForwardKinematics(std::vector<double>& data) {
+
+	double Joint_pos[3][6] = { {0, 0, 0, 0, 0, data[0]},
+							   {0, 0, 0, 0, 0, data[1]},
+							   {0, 0, 0, 0, 0, data[2]} };
+	double joint_velocity[3][6] = { {0, 0, 0, 0, 0, data[3]},
+							   {0, 0, 0, 0, 0, data[4]},
+							   {0, 0, 0, 0, 0, data[5]} };
+	
+	for (int i = 0; i < 3; i++) {
+		this->jointPool().at(i).makI()->setPe(*this->jointPool().at(i).makJ(), Joint_pos[i], "123");
+	}
+	for (auto& m : this->motionPool()) m.updP();
+	this->generalMotionPool()[0].updP();
+
+	// calculate the forward velocity
+	for (int i = 0; i < this->jointPool().size(); ++i) {
+		this->jointPool().at(i).makI()->fatherPart().setVs(*this->jointPool().at(i).makJ(), joint_velocity[i]);
+	}
+	for (auto& m : this->motionPool()) m.updV();
+	this->generalMotionPool()[0].updV();
+
+	double ee_position[6] = { 0,0,0,0,0,0 };
+	this->getOutputPos(ee_position);
+	ee_position[3] = std::fmod(ee_position[3], 2 * PI);
+
+	double ee_velocity[6] = { 0,0,0,0,0,0 };
+	dynamic_cast<aris::dynamic::GeneralMotion&>(this->generalMotionPool()[0]).getMva(ee_velocity);
+
+	data[6] = ee_position[0];
+	data[7] = ee_position[1];
+	data[8] = ee_position[3];
+
+	data[9] = ee_velocity[0];
+	data[10] = ee_velocity[1];
+	data[11] = ee_velocity[5];
+
+    // std::cout << "**********************" << std::endl;
+}
+
+triple::TripleModel::TripleModel() {
 	double a = 0.325;
 	double b = 0.2;
 	double c = 0.2;
@@ -53,94 +99,52 @@ auto triple::TripleModel::createModel() -> std::unique_ptr<Model> {
 	// 定义末端位置与321欧拉角
 	const double body_position_and_euler321[6]{ 0 , a + b + c , 0 , PI / 2 , 0 , 0 };
 
-	// 定义模型
-	std::unique_ptr<Model> model(new Model);
-
 	// 设置重力,重力在y轴
 	const double gravity[6]{ 0.0, -9.81, 0.0, 0.0, 0.0, 0.0 };
-	model->environment().setGravity(gravity);
+	this->environment().setGravity(gravity);
 
 	// 添加杆件，这里pe的意思为position and euler angle，函数的参数指定了位姿以及惯性向量
-	auto& link1 = model->addPartByPe(link1_pos_euler, "321", link1_intertia_vector);
-	auto& link2 = model->addPartByPe(link2_pos_euler, "321", link2_intertia_vecter);
-	auto& link3 = model->addPartByPe(link3_pos_euler, "321", link3_intertia_vecter);
+	auto& link1 = this->addPartByPe(link1_pos_euler, "321", link1_intertia_vector);
+	auto& link2 = this->addPartByPe(link2_pos_euler, "321", link2_intertia_vecter);
+	auto& link3 = this->addPartByPe(link3_pos_euler, "321", link3_intertia_vecter);
 
 	// 添加关节，添加转动关节，前两个参数为关节连接的杆件，后两个参数定义了关节的位置与轴线
-	auto& joint1 = model->addRevoluteJoint(link1, model->ground(), joint1_position, joint1_axis);
-	auto& joint2 = model->addRevoluteJoint(link2, link1, joint2_position, joint2_axis);
-	auto& joint3 = model->addRevoluteJoint(link3, link2, joint3_position, joint3_axis);
+	auto& joint1 = this->addRevoluteJoint(link1, this->ground(), joint1_position, joint1_axis);
+	auto& joint2 = this->addRevoluteJoint(link2, link1, joint2_position, joint2_axis);
+	auto& joint3 = this->addRevoluteJoint(link3, link2, joint3_position, joint3_axis);
 
 	// 添加驱动 Joint1 为被动关节，不用加motion
-	//auto& motion1 = model->addMotion(joint1);
-	auto& motion2 = model->addMotion(joint2);
-	auto& motion3 = model->addMotion(joint3);
+	//auto& motion1 = this->addMotion(joint1);
+	auto& motion2 = this->addMotion(joint2);
+	auto& motion3 = this->addMotion(joint3);
+
+	// 添加电机模型
+	double motion_frc1[3]{0, 0, 0};//静摩擦力，粘性、惯量
+	double motion_frc2[3]{1 * 1e-2, 2 * 1e-1, 1002 * 1e-7};//静摩擦力，粘性、惯量
+	// double motion_frc1[3]{0.1, 0.01, 1002 * 1e-7}; //静摩擦力，粘性、惯量
+	double motion_frc3[3]{1 * 1e-2, 2 * 1e-1, 1002 * 1e-7};//静摩擦力，粘性、惯量
+	// motion1.setFrcCoe(motion_frc1);
+	motion2.setFrcCoe(motion_frc2);
+	motion3.setFrcCoe(motion_frc3);
 
 	// 添加末端，第一个参数表明末端位于link4上，第二个参数表明末端的位姿是相对于地面的，后两个参数定义了末端的起始位姿
-	auto& end_effector = model->addGeneralMotionByPe(link3, model->ground(), body_position_and_euler321, "321");
+	auto& end_effector = this->addGeneralMotionByPe(link3, this->ground(), body_position_and_euler321, "321");
 
-	auto& force2 = model->forcePool().add< aris::dynamic::SingleComponentForce >("f2", motion2.makI(), motion2.makJ(), 5);
-	auto& force3 = model->forcePool().add< aris::dynamic::SingleComponentForce >("f3", motion3.makI(), motion3.makJ(), 5);
+	auto& force2 = this->forcePool().add< aris::dynamic::SingleComponentForce >("f2", motion2.makI(), motion2.makJ(), 5);
+	auto& force3 = this->forcePool().add< aris::dynamic::SingleComponentForce >("f3", motion3.makI(), motion3.makJ(), 5);
 
 	//-------------------------------------------- 添加求解器 --------------------------------------------//
 	/// [Solver]
 	// 添加两个求解器，并为求解器分配内存。注意，求解器一但分配内存后，请不要再添加或删除杆件、关节、驱动、末端等所有元素
-	auto& inverse_kinematic_solver = model->solverPool().add<aris::dynamic::InverseKinematicSolver>();
-	auto& forward_kinematic_solver = model->solverPool().add<aris::dynamic::ForwardKinematicSolver>();
-	auto& inverse_dynamic_solver = model->solverPool().add<aris::dynamic::InverseDynamicSolver>();
-	auto& forward_dynamic_solver = model->solverPool().add<aris::dynamic::ForwardDynamicSolver>();
+	auto& inverse_kinematic_solver = this->solverPool().add<aris::dynamic::InverseKinematicSolver>();
+	auto& forward_kinematic_solver = this->solverPool().add<aris::dynamic::ForwardKinematicSolver>();
+	auto& inverse_dynamic_solver = this->solverPool().add<aris::dynamic::InverseDynamicSolver>();
+	auto& forward_dynamic_solver = this->solverPool().add<aris::dynamic::ForwardDynamicSolver>();
 
-	model->init();
-
-	std::cout << "\nSuccessful modeling ! " << std::endl;
-
-	
-	return model;
+	this->init();
+	std::cout << " Successful modeling ! " << std::endl;
 }
 
-// calculate forward Kinematics 
-// data : joint1, joint2, joint3, w1, w2, w3, x, y, angle, vx, vy, wz, ax, ay, bz, ja1, ja2, ja3 
-void triple::TripleModel::calcuForwardKinematics(std::vector<double>& data) {
-
-	double Joint_pos[3][6] = { {0, 0, 0, 0, 0, data[0]},
-							   {0, 0, 0, 0, 0, data[1]},
-							   {0, 0, 0, 0, 0, data[2]} };
-	double joint_velocity[3][6] = { {0, 0, 0, 0, 0, data[3]},
-							   {0, 0, 0, 0, 0, data[4]},
-							   {0, 0, 0, 0, 0, data[5]} };
-
-	for (int i = 0; i < 3; i++) {
-		m_->jointPool().at(i).makI()->setPe(*m_->jointPool().at(i).makJ(), Joint_pos[i], "123");
-	}
-	for (auto& m : m_->motionPool()) m.updP();
-	m_->generalMotionPool()[0].updP();
-
-	// calculate the forward velocity
-	for (int i = 0; i < m_->jointPool().size(); ++i) {
-		m_->jointPool().at(i).makI()->fatherPart().setVs(*m_->jointPool().at(i).makJ(), joint_velocity[i]);
-	}
-	for (auto& m : m_->motionPool()) m.updV();
-	m_->generalMotionPool()[0].updV();
-
-	double ee_position[6] = { 0,0,0,0,0,0 };
-	m_->getOutputPos(ee_position);
-	ee_position[3] = std::fmod(ee_position[3], 2 * PI);
-
-	double ee_velocity[6] = { 0,0,0,0,0,0 };
-	dynamic_cast<aris::dynamic::GeneralMotion&>(m_->generalMotionPool()[0]).getMva(ee_velocity);
-
-	data[6] = ee_position[0];
-	data[7] = ee_position[1];
-	data[8] = ee_position[3];
-
-	data[9] = ee_velocity[0];
-	data[10] = ee_velocity[1];
-	data[11] = ee_velocity[5];
-
-    // std::cout << "**********************" << std::endl;
-}
-
-triple::TripleModel::TripleModel() {
-}
 triple::TripleModel::~TripleModel() = default;
 
 ARIS_REGISTRATION{
